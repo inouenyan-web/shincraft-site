@@ -1,85 +1,92 @@
-# ShinCRAFT SNS自動投稿 初期構築パッケージ
+# ShinCRAFT SNS自動投稿 初期構築ガイド（非エンジニア向け）
 
-このフォルダは、Google Driveの `AI` フォルダ配下に、ShinCRAFTのSNS自動投稿運用に必要なフォルダ構成とGoogle Sheets管理台帳を作るための初期構築パッケージです。
+このフォルダは、ShinCRAFTのSNS投稿を「写真投入 → 内容確認 → 承認」だけで回せるようにするための初期設定一式です。
 
-## 目的
+---
 
-Google Driveに写真を入れたら、ChatGPTでInstagram投稿用画像と投稿文を作成し、Google Sheetsで承認後、BufferからInstagram / Xに投稿予約する運用を作る。
+## 1. これで何ができる？
 
-## 使用ツール
+初期設定を1回実行すると、Google DriveとGoogle Sheetsに以下が自動で作られます。
 
-- Google Drive
-- Google Sheets
-- Google Apps Script
-- Yoom
-- ChatGPT / OpenAI API
-- Buffer
-- Codex
-- Claude
+- 投稿用フォルダ（投稿待ち、生成画像、投稿済みなど）
+- 投稿管理台帳（ステータス管理・本文管理）
+- テンプレートファイル
 
-## 前提
+日常運用は以下だけです。
 
-- n8nは使わない
-- Google Driveの親フォルダは `AI`
-- AIフォルダID: `1Nl5ksVJuwEuDZgyb0jr9V6Os9YLzGBcj`
-- 日常運用はAndroid / iPadで行う
-- ユーザーの作業は「写真投入」と「承認」だけにする
+1. Android / iPadで `01_投稿待ち` に写真を入れる
+2. Google Sheetsで投稿案を確認する
+3. 問題なければステータスを `承認` にする
+4. Bufferで投稿済みを確認する
 
-## 作成される構成
+---
 
-```text
-AI
-└ ShinCRAFT_SNS自動投稿
-   ├ 01_投稿待ち
-   ├ 02_画像生成用元写真
-   ├ 03_生成画像
-   ├ 04_承認待ち
-   ├ 05_投稿済み
-   ├ 06_エラー確認
-   └ 99_テンプレート
-```
+## 2. 初回セットアップ手順（画面どおりに進めればOK）
 
-## 作成されるGoogle Sheets
+### Step 1: Google Apps Scriptを開く
 
-`SNS投稿管理台帳_Shincraft`
+1. ブラウザで [https://script.google.com](https://script.google.com) を開く
+2. Googleアカウントでログイン
+3. 右上の **「新しいプロジェクト」** をクリック
 
-### メイン列
+### Step 2: setup.gs を貼り付ける
 
-- 管理ID
-- 登録日
-- 商品名
-- 投稿カテゴリ
-- 元画像URL
-- 生成画像URL
-- Instagram本文
-- X本文
-- CTA
-- ハッシュタグ
-- 補足メモ
-- ステータス
-- 投稿予定日
-- Buffer登録結果
-- Instagram投稿URL
-- X投稿URL
-- エラー内容
+1. 左側のファイル一覧で `コード.gs` を開く
+2. 既存の中身を全部削除
+3. このリポジトリの `ai-sns-automation/setup.gs` の内容を丸ごと貼り付ける
+4. 上部のプロジェクト名を `ShinCRAFT_SNS初期構築` などに変更して保存
 
-### ステータス
+### Step 3: 実行する関数を選ぶ
 
-- 未確認
-- 修正
-- 承認
-- 投稿予約済み
-- 投稿済み
-- エラー
+1. 画面上部の関数選択ドロップダウンで **`setupShinCraftSnsAutomation`** を選択
+2. 実行（▶）をクリック
 
-## 初回実行手順
+### Step 4: 初回権限を許可する
 
-1. Google Apps Scriptを開く
-2. `setup.gs` の中身を貼り付ける
-3. `setupShinCraftSnsAutomation` を実行
-4. Google Drive / Google Sheetsの権限を許可
-5. ログに表示された親フォルダURLと管理台帳URLを確認
+初回だけ承認画面が出ます。
 
-## 注意
+1. 「承認が必要です」→ **権限を確認**
+2. 利用アカウントを選択
+3. 「このアプリはGoogleで確認されていません」が出た場合は
+   - **詳細** をクリック
+   - **（安全ではないページ）に移動** をクリック
+4. Drive / Sheets のアクセス権を **許可**
 
-APIキー、Bufferトークン、OpenAIキーなどの秘密情報はGitHubに保存しないこと。
+### Step 5: 実行後に確認する
+
+- Google Drive の `AI` フォルダ配下に `ShinCRAFT_SNS自動投稿` ができている
+- サブフォルダ（`01_投稿待ち` など）ができている
+- `SNS投稿管理台帳_Shincraft` ができている
+- シート `投稿管理` の `ステータス` 列でプルダウンが使える
+
+---
+
+## 3. すでにある状態で再実行しても大丈夫？
+
+はい。フォルダ・管理台帳は「既存があれば再利用」するため、重複を避ける設計です。
+
+---
+
+## 4. 秘密情報の扱い（重要）
+
+以下は **絶対にGitHubへ保存しない** でください。
+
+- OpenAI APIキー
+- Buffer APIキー
+- Yoom認証情報
+- Google OAuthトークン
+
+このリポジトリには、秘密値ではなく「項目名だけ」を記載します（例: `.env.example`）。
+
+---
+
+## 5. 次の実装で使う仕様書
+
+このフォルダには次段階のために以下を追加しています。
+
+- `YOOOM_FLOW_SPEC.md`
+- `BUFFER_API_SPEC.md`
+- `OPENAI_IMAGE_PROMPT.md`
+- `OPENAI_CAPTION_PROMPT.md`
+- `MOBILE_OPERATION_MANUAL.md`
+

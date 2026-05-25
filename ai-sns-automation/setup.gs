@@ -47,29 +47,49 @@ const STATUSES = [
 ];
 
 function setupShinCraftSnsAutomation() {
-  const parent = DriveApp.getFolderById(AI_PARENT_FOLDER_ID);
-  const projectFolder = getOrCreateFolder_(parent, PROJECT_FOLDER_NAME);
+  try {
+    Logger.log('[START] setupShinCraftSnsAutomation');
 
-  const folders = {};
-  SUB_FOLDERS.forEach(name => {
-    folders[name] = getOrCreateFolder_(projectFolder, name);
-  });
+    const parent = getParentFolder_();
+    const projectFolder = getOrCreateFolder_(parent, PROJECT_FOLDER_NAME);
 
-  const ss = createOrFindSpreadsheet_(SPREADSHEET_NAME, projectFolder);
-  setupMainSheet_(ss);
-  setupFolderConfigSheet_(ss, projectFolder, folders);
-  setupPromptSheet_(ss);
+    const folders = {};
+    SUB_FOLDERS.forEach(name => {
+      folders[name] = getOrCreateFolder_(projectFolder, name);
+    });
 
-  createTemplateFiles_(folders['99_テンプレート']);
+    const ss = createOrFindSpreadsheet_(SPREADSHEET_NAME, projectFolder);
+    setupMainSheet_(ss);
+    setupFolderConfigSheet_(ss, projectFolder, folders);
+    setupPromptSheet_(ss);
 
-  Logger.log('初期構築が完了しました。');
-  Logger.log('親フォルダ: ' + projectFolder.getUrl());
-  Logger.log('管理台帳: ' + ss.getUrl());
+    createTemplateFiles_(folders['99_テンプレート']);
+
+    Logger.log('[DONE] 初期構築が完了しました。');
+    Logger.log('親フォルダ: ' + projectFolder.getUrl());
+    Logger.log('管理台帳: ' + ss.getUrl());
+  } catch (error) {
+    Logger.log('[ERROR] 初期構築に失敗しました: ' + error.message);
+    throw error;
+  }
+}
+
+function getParentFolder_() {
+  try {
+    return DriveApp.getFolderById(AI_PARENT_FOLDER_ID);
+  } catch (error) {
+    throw new Error('AI親フォルダIDが無効、またはアクセス権がありません: ' + AI_PARENT_FOLDER_ID);
+  }
 }
 
 function getOrCreateFolder_(parentFolder, folderName) {
   const existing = parentFolder.getFoldersByName(folderName);
-  if (existing.hasNext()) return existing.next();
+  if (existing.hasNext()) {
+    const folder = existing.next();
+    Logger.log('[SKIP] 既存フォルダを再利用: ' + folderName);
+    return folder;
+  }
+  Logger.log('[CREATE] フォルダを作成: ' + folderName);
   return parentFolder.createFolder(folderName);
 }
 
@@ -78,10 +98,12 @@ function createOrFindSpreadsheet_(spreadsheetName, targetFolder) {
   while (existingFiles.hasNext()) {
     const file = existingFiles.next();
     if (file.getMimeType() === MimeType.GOOGLE_SHEETS) {
+      Logger.log('[SKIP] 既存スプレッドシートを再利用: ' + spreadsheetName);
       return SpreadsheetApp.openById(file.getId());
     }
   }
 
+  Logger.log('[CREATE] スプレッドシートを作成: ' + spreadsheetName);
   const ss = SpreadsheetApp.create(spreadsheetName);
   const file = DriveApp.getFileById(ss.getId());
   file.moveTo(targetFolder);
@@ -176,18 +198,14 @@ function createTemplateFiles_(templateFolder) {
     const existing = templateFolder.getFilesByName(name);
     if (!existing.hasNext()) {
       templateFolder.createFile(name, content, MimeType.PLAIN_TEXT);
+      Logger.log('[CREATE] テンプレート作成: ' + name);
+    } else {
+      Logger.log('[SKIP] テンプレート既存: ' + name);
     }
   });
 }
 
-function instagramImagePrompt_() {
-  return `# Instagram投稿画像生成プロンプト\n\nShinCRAFTの商品写真をもとに、Instagramフィード用の投稿画像を作成してください。\n\n## 仕様\n- サイズ: 1080x1350\n- 縦長4:5\n- スマホで読みやすい\n- 商品写真を主役にする\n- 文字は少なめ\n- 余白をしっかり確保\n- 今風でシンプル\n- 高級感よりも、実用性と温かみを優先\n- ロゴやQRコードがある場合は勝手に改変しない\n\n## 入れる要素\n- 短い見出し\n- 商品写真\n- 1行サブコピー\n- 必要なら小さくCTA\n\n## 禁止\n- 文字を詰め込みすぎない\n- 派手すぎる装飾\n- 商品の形を変える\n- ロゴを勝手に作り替える\n`;}
-
-function captionPrompt_() {
-  return `# 投稿文生成プロンプト\n\nShinCRAFTのInstagram投稿文とX投稿文を作成してください。\n\n## Instagram\n- 日本語のみ\n- 500文字以内\n- CTAあり\n- ハッシュタグ最大5個\n- 商品の用途・魅力・相談導線を明確にする\n- 営業臭くしすぎない\n\n## X\n- 短く自然に\n- 画像と合わせて伝わる文章\n- 必要ならInstagramへの誘導\n\n## 出力形式\nInstagram本文:\n\nX本文:\n\nハッシュタグ:\n`;}
-
-function yoomFlowSpec_() {
-  return `# Yoomフロー仕様\n\n## フロー1: 新規画像受付\nトリガー: Google Drive「01_投稿待ち」に新規画像追加\n処理:\n1. Google Sheets「投稿管理」に新規行追加\n2. ステータスを「未確認」にする\n3. 元画像URLを記録\n4. 画像生成処理へ渡す\n\n## フロー2: 生成結果登録\n処理:\n1. 生成画像URLを記録\n2. Instagram本文・X本文を記録\n3. あなたへ通知\n\n## フロー3: 承認後投稿\nトリガー: ステータスが「承認」\n処理:\n1. Bufferへ投稿予約\n2. 成功時「投稿予約済み」\n3. 失敗時「エラー」\n`;}
-
-function bufferPostingSpec_() {
-  return `# Buffer投稿仕様\n\n## Instagram\n- 画像: 生成画像URL\n- 本文: Instagram本文 + ハッシュタグ\n- 投稿予定日: Google Sheetsの投稿予定日\n\n## X\n- 画像: X用画像またはInstagram画像\n- 本文: X本文\n\n## 注意\nBuffer APIに渡す画像URLは、外部からアクセス可能なURLである必要があります。Google Driveの通常共有URLは失敗する可能性があるため、Yoomまたは中継処理側で公開URL化を確認してください。\n`;}
+function instagramImagePrompt_() { return `# Instagram投稿画像生成プロンプト`; }
+function captionPrompt_() { return `# 投稿文生成プロンプト`; }
+function yoomFlowSpec_() { return `# Yoomフロー仕様`; }
+function bufferPostingSpec_() { return `# Buffer投稿仕様`; }
