@@ -64,20 +64,60 @@ function pollPendingDriveImages() {
 }
 
 function setupDrivePollingTrigger() {
-  deleteDrivePollingTriggers();
+  const deletedCount = deleteDrivePollingTriggers();
+  Logger.log('[INFO] 既存トリガー削除数: ' + deletedCount);
 
-  ScriptApp.newTrigger(DRIVE_POLLING_CONFIG.TRIGGER_FUNCTION_NAME)
+  const trigger = ScriptApp.newTrigger(DRIVE_POLLING_CONFIG.TRIGGER_FUNCTION_NAME)
     .timeBased()
     .everyMinutes(DRIVE_POLLING_CONFIG.TRIGGER_INTERVAL_MINUTES)
     .create();
+
+  Logger.log('[INFO] 作成トリガーID: ' + trigger.getUniqueId());
+
+  const pollingTriggers = getDrivePollingTriggers_();
+  Logger.log('[INFO] 作成後のpollPendingDriveImagesトリガー数: ' + pollingTriggers.length);
+
+  if (pollingTriggers.length === 0) {
+    throw new Error('pollPendingDriveImages の時間主導トリガーを作成できませんでした。Apps Scriptのトリガー画面と実行ログを確認してください。');
+  }
+
+  return pollingTriggers.length;
 }
 
 function deleteDrivePollingTriggers() {
   const triggers = ScriptApp.getProjectTriggers();
+  let deletedCount = 0;
+
   triggers.forEach(trigger => {
     if (trigger.getHandlerFunction() === DRIVE_POLLING_CONFIG.TRIGGER_FUNCTION_NAME) {
       ScriptApp.deleteTrigger(trigger);
+      deletedCount++;
     }
+  });
+
+  Logger.log('[INFO] deleteDrivePollingTriggers deleted: ' + deletedCount);
+  return deletedCount;
+}
+
+function listDrivePollingTriggers() {
+  const triggers = getDrivePollingTriggers_();
+  Logger.log('[INFO] pollPendingDriveImages trigger count: ' + triggers.length);
+
+  triggers.forEach(trigger => {
+    Logger.log(
+      '[INFO] triggerId=' + trigger.getUniqueId()
+      + ', eventType=' + trigger.getEventType()
+      + ', source=' + trigger.getTriggerSource()
+      + ', handler=' + trigger.getHandlerFunction()
+    );
+  });
+
+  return triggers.length;
+}
+
+function getDrivePollingTriggers_() {
+  return ScriptApp.getProjectTriggers().filter(trigger => {
+    return trigger.getHandlerFunction() === DRIVE_POLLING_CONFIG.TRIGGER_FUNCTION_NAME;
   });
 }
 

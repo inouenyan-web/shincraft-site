@@ -50,6 +50,8 @@
 - `01_投稿待ち` に入れたファイルのMIMEタイプが画像か
 - エラーになったファイルが `06_エラー確認` に移動していないか
 - Apps Scriptの「実行数」画面でエラーログを確認する
+- `setupDrivePollingTrigger` が実行完了なのにトリガー画面で見えない場合は、`listDrivePollingTriggers` を実行してログに出るトリガー数を確認する
+- `listDrivePollingTriggers` でも `0` の場合は、同じApps Scriptプロジェクトを開いているか、実行アカウントがトリガー作成を許可されているか確認する
 
 ## 6. 固定ID
 
