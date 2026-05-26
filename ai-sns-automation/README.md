@@ -90,3 +90,24 @@
 - `OPENAI_CAPTION_PROMPT.md`
 - `MOBILE_OPERATION_MANUAL.md`
 
+## 6. Webhook中心構成への切り替え方針（Yoomを薄くする）
+
+運用を簡素化するため、構成を以下に統一します。
+
+- Yoom: `01_投稿待ち` の新規ファイル検知 + Apps Script WebhookへPOSTのみ
+- Apps Script (`webhook.gs`): バリデーション、管理ID採番、Google Sheets追記などのロジックを集約
+- 修正作業: Yoom画面ではなくCodex主軸で実施
+- Claude Chrome: 画面操作の補助用途のみ
+
+関連ドキュメント:
+
+- `WEBHOOK_SETUP.md`（Apps Script Webアプリ化手順）
+- `YOOOM_THIN_TRIGGER.md`（Yoom最小設定）
+- `MOBILE_CODEX_OPERATION.md`（Android運用手順）
+
+### 参照する固定ID
+
+- Spreadsheet ID: `1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s`
+- 監視フォルダID (`01_投稿待ち`): `17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j`
+- 生成画像保存フォルダID (`03_生成画像`): `1eVUuN8qYuHp7h0h_I13nNS6TwuiHRcT7`
+- エラー確認フォルダID (`06_エラー確認`): `12-Wgy-eD0hOaEd8-9Ftk1cg7AjH7b2RS`
