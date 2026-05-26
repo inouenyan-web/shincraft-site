@@ -70,7 +70,7 @@ function parseJson_(raw) {
 }
 
 function validatePayload_(payload) {
-  const required = ['fileId', 'fileName', 'fileUrl', 'createdTime'];
+  const required = ['fileId', 'fileName', 'fileUrl'];
   required.forEach(key => {
     if (!payload[key] || String(payload[key]).trim() === '') {
       throw new Error('必須項目が不足しています: ' + key);
@@ -81,9 +81,11 @@ function validatePayload_(payload) {
     throw new Error('fileUrlはhttp/https形式で指定してください。');
   }
 
-  const created = new Date(payload.createdTime);
-  if (isNaN(created.getTime())) {
-    throw new Error('createdTimeは日時として解釈できる値を指定してください。');
+  if (payload.createdTime !== undefined && String(payload.createdTime).trim() !== '') {
+    const created = new Date(payload.createdTime);
+    if (isNaN(created.getTime())) {
+      throw new Error('createdTimeは日時として解釈できる値を指定してください。');
+    }
   }
 }
 
