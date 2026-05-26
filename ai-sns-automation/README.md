@@ -19,6 +19,14 @@
 3. 問題なければステータスを `承認` にする
 4. Bufferで投稿済みを確認する
 
+現在の本命構成は、Yoom不要・Google Cloud不要の **Apps Script定期巡回型** です。
+
+日常作業は以下の3つに寄せます。
+
+1. `01_投稿待ち` に画像を入れる
+2. Google Sheets `投稿管理` で内容を確認する
+3. 問題なければステータスを `承認` にする
+
 ---
 
 ## 2. 初回セットアップ手順（画面どおりに進めればOK）
@@ -90,9 +98,34 @@
 - `OPENAI_CAPTION_PROMPT.md`
 - `MOBILE_OPERATION_MANUAL.md`
 
-## 6. Webhook中心構成への切り替え方針（Yoomを薄くする）
+## 6. 本命構成: Apps Script定期巡回型（Yoom不要）
 
-運用を簡素化するため、構成を以下に統一します。
+YoomのWebhook送信やGoogle Apps Script API連携は、追加認証・Google Cloud設定・課金設定が絡む可能性があるため、本運用の主軸から外します。
+
+本命構成は以下です。
+
+- Apps Script (`drive_polling.gs`): `01_投稿待ち` を時間主導トリガーで定期巡回
+- Apps Script: 新規画像を検知し、Google Sheets `投稿管理` に1行追加
+- Apps Script: 登録済みファイルIDをScript Propertiesに記録し、二重登録を防止
+- Apps Script: 登録成功後、画像を `05_投稿済み` へ移動
+- Apps Script: 登録失敗時、画像を `06_エラー確認` へ移動
+- Codex: ロジック修正・仕様更新の主軸
+
+関連ドキュメント:
+
+- `DRIVE_POLLING_SETUP.md`（Apps Script定期巡回のセットアップ手順）
+- `NO_YOOM_OPERATION.md`（Yoomを使わない日常運用方針）
+
+### 参照する固定ID
+
+- Spreadsheet ID: `1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s`
+- 監視フォルダID (`01_投稿待ち`): `17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j`
+- 処理済みフォルダID (`05_投稿済み`): `10b7YcJykmsPm9BcQEP-pUM2ZMvYNLu3i`
+- エラー確認フォルダID (`06_エラー確認`): `12-Wgy-eD0hOaEd8-9Ftk1cg7AjH7b2RS`
+
+## 7. 代替案: Webhook中心構成（Yoomを薄くする）
+
+以下は代替案です。本運用の主軸はApps Script定期巡回型です。
 
 - Yoom: `01_投稿待ち` の新規ファイル検知 + Apps Script WebhookへPOSTのみ
 - Apps Script (`webhook.gs`): バリデーション、管理ID採番、Google Sheets追記などのロジックを集約
