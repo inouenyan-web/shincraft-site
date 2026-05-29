@@ -8,12 +8,16 @@
 //   { token, action: "append", sheet, values:{列名:値,...} }     -> 1行追加
 //   { token, action: "update", sheet, keyColumn, keyValue,
 //            updates:{列名:値,...} }                            -> 該当行の指定列を更新
+//   { token, action: "post_to_x", text }                       -> Xへツイート投稿
+//   { token, action: "note_to_x", noteUrl, noteTitle }         -> note記事をXへシェア投稿
 //   旧Yoom互換: action未指定 + fileId/fileName/fileUrl があれば従来の追記を実行
 //
 // セキュリティ:
 //   - Web App URL は実質ベアラーシークレット. SHARED_TOKEN と一致しない要求は拒否する.
 //   - SHARED_TOKEN はスクリプトプロパティに保存する(コードに直書きしない).
 //     プロジェクトの設定 > スクリプトプロパティ に SHARED_TOKEN を登録すること.
+//   - X API認証情報もスクリプトプロパティに保存する:
+//     X_API_KEY, X_API_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET
 //
 // デプロイ:
 //   デプロイ > 新しいデプロイ > ウェブアプリ
@@ -23,6 +27,7 @@
 
 const SPREADSHEET_ID = '1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s';
 const DEFAULT_SHEET = '投稿管理';
+const NOTE_SHEET = 'note連携';
 
 function doPost(e) {
   try {
@@ -40,6 +45,12 @@ function doPost(e) {
         return json_(appendRow_(req.sheet || DEFAULT_SHEET, req.values || legacyValues_(req)));
       case 'update':
         return json_(updateRow_(req.sheet || DEFAULT_SHEET, req.keyColumn, req.keyValue, req.updates || {}));
+      case 'post_to_x':
+        if (!req.text) throw new Error('textが必要です。');
+        return json_(postToXAction_(req.text));
+      case 'note_to_x':
+        if (!req.noteUrl) throw new Error('noteUrlが必要です。');
+        return json_(noteToXAction_(req.noteUrl, req.noteTitle || ''));
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -47,6 +58,116 @@ function doPost(e) {
     return json_({ ok: false, error: String(error && error.message ? error.message : error) });
   }
 }
+
+// ── X投稿アクション ──────────────────────────────────────────────
+
+function postToXAction_(text) {
+  const xUrl = postTweet_(text);
+  return { ok: true, xPostUrl: xUrl };
+}
+
+function noteToXAction_(noteUrl, noteTitle) {
+  // 重複チェック（note連携シートに既投稿のURLがあればスキップ）
+  try {
+    const rows = listRows_(NOTE_SHEET);
+    const alreadyPosted = rows.some(function(r) { return r['link'] === noteUrl; });
+    if (alreadyPosted) return { ok: true, status: 'duplicate', message: '既にX投稿済みです。', noteUrl: noteUrl };
+  } catch (e) {
+    // シート未作成時は無視して続行
+  }
+
+  const template = 'noteに新しい記事を投稿しました📝\n{title}\n{link}';
+  const text = template
+    .replace('{title}', noteTitle || '')
+    .replace('{link}', noteUrl)
+    .trim();
+
+  const xUrl = postTweet_(text);
+
+  // 投稿記録をnote連携シートへ保存
+  try {
+    appendRow_(NOTE_SHEET, {
+      guid: noteUrl,
+      title: noteTitle || '',
+      link: noteUrl,
+      postedAt: new Date().toISOString(),
+      xPostUrl: xUrl,
+    });
+  } catch (e) {
+    // シート未作成なら記録はスキップ（投稿自体は成功）
+  }
+
+  return { ok: true, status: 'posted', xPostUrl: xUrl, noteUrl: noteUrl };
+}
+
+// X API v2 OAuth 1.0a でツイートを投稿し、投稿URLを返す
+function postTweet_(text) {
+  const props = PropertiesService.getScriptProperties();
+  const apiKey    = props.getProperty('X_API_KEY');
+  const apiSecret = props.getProperty('X_API_SECRET');
+  const accessToken  = props.getProperty('X_ACCESS_TOKEN');
+  const accessSecret = props.getProperty('X_ACCESS_SECRET');
+
+  if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
+    throw new Error('X APIキーがスクリプトプロパティに未設定です。SETUP_SECRETS.mdを参照してください。');
+  }
+
+  const endpoint = 'https://api.twitter.com/2/tweets';
+  const body = JSON.stringify({ text: text });
+  const method = 'POST';
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = Utilities.base64Encode(
+    Utilities.newBlob(Math.random().toString() + timestamp).getBytes()
+  ).replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+
+  const oauthParams = {
+    oauth_consumer_key:     apiKey,
+    oauth_nonce:            nonce,
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp:        timestamp,
+    oauth_token:            accessToken,
+    oauth_version:          '1.0',
+  };
+
+  const paramStr = Object.keys(oauthParams).sort().map(function(k) {
+    return encodeURIComponent_(k) + '=' + encodeURIComponent_(oauthParams[k]);
+  }).join('&');
+
+  const signatureBase = method + '&' + encodeURIComponent_(endpoint) + '&' + encodeURIComponent_(paramStr);
+  const signingKey = encodeURIComponent_(apiSecret) + '&' + encodeURIComponent_(accessSecret);
+
+  const signatureBytes = Utilities.computeHmacSignature(
+    Utilities.MacAlgorithm.HMAC_SHA_1, signatureBase, signingKey
+  );
+  oauthParams.oauth_signature = Utilities.base64Encode(signatureBytes);
+
+  const authHeader = 'OAuth ' + Object.keys(oauthParams).map(function(k) {
+    return encodeURIComponent_(k) + '="' + encodeURIComponent_(oauthParams[k]) + '"';
+  }).join(', ');
+
+  const response = UrlFetchApp.fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
+    payload: body,
+    muteHttpExceptions: true,
+  });
+
+  const statusCode = response.getResponseCode();
+  const result = JSON.parse(response.getContentText());
+  if (statusCode !== 201 || !result.data || !result.data.id) {
+    throw new Error('X API エラー ' + statusCode + ': ' + JSON.stringify(result));
+  }
+  return 'https://x.com/i/web/status/' + result.data.id;
+}
+
+// RFC3986準拠のエンコード（GAS標準のencodeURIComponentは一部記号を変換しない）
+function encodeURIComponent_(str) {
+  return encodeURIComponent(String(str)).replace(/[!'()*]/g, function(c) {
+    return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+  });
+}
+
+// ── 認証・既存ヘルパー ───────────────────────────────────────────
 
 function assertToken_(token) {
   const expected = PropertiesService.getScriptProperties().getProperty('SHARED_TOKEN');
