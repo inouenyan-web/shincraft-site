@@ -17,9 +17,6 @@ import { requireEnv, optionalEnv } from "./lib/env.mjs";
 const NOTE_SHEET = "note連携";
 const dryRun = process.argv.includes("--dry-run");
 
-const { NOTE_USERNAME } = requireEnv(["NOTE_USERNAME"]);
-const feedUrl = `https://note.com/${NOTE_USERNAME}/rss`;
-
 // 投稿文テンプレート（環境変数で上書き可能）。{title} {link} を置換。
 const template = optionalEnv("NOTE_X_TEMPLATE", "新しい記事を投稿しました📝\n{title}\n{link}");
 
@@ -52,34 +49,44 @@ async function recordPosted(item, xUrl) {
   });
 }
 
-const parser = new Parser();
-const feed = await parser.parseURL(feedUrl);
-const posted = await getPostedGuids();
+async function main() {
+  const { NOTE_USERNAME } = requireEnv(["NOTE_USERNAME"]);
+  const feedUrl = `https://note.com/${NOTE_USERNAME}/rss`;
 
-const fresh = (feed.items || []).filter((it) => !posted.has(String(it.guid || it.link)));
+  const parser = new Parser();
+  const feed = await parser.parseURL(feedUrl);
+  const posted = await getPostedGuids();
 
-if (fresh.length === 0) {
-  console.log(JSON.stringify({ ok: true, posted: 0, message: "新着なし" }));
-  process.exit(0);
+  const fresh = (feed.items || []).filter((it) => !posted.has(String(it.guid || it.link)));
+
+  if (fresh.length === 0) {
+    console.log(JSON.stringify({ ok: true, posted: 0, message: "新着なし" }));
+    return;
+  }
+
+  // 古い順に投稿する。
+  fresh.reverse();
+
+  const results = [];
+  for (const item of fresh) {
+    const text = buildText(item);
+    if (dryRun) {
+      results.push({ title: item.title, text, dryRun: true });
+      continue;
+    }
+    try {
+      const res = await postTweet({ text });
+      await recordPosted(item, res.url);
+      results.push({ title: item.title, xPostUrl: res.url });
+    } catch (e) {
+      results.push({ title: item.title, error: String(e.message || e) });
+    }
+  }
+
+  console.log(JSON.stringify({ ok: true, posted: dryRun ? 0 : results.length, results }, null, 2));
 }
 
-// 古い順に投稿する。
-fresh.reverse();
-
-const results = [];
-for (const item of fresh) {
-  const text = buildText(item);
-  if (dryRun) {
-    results.push({ title: item.title, text, dryRun: true });
-    continue;
-  }
-  try {
-    const res = await postTweet({ text });
-    await recordPosted(item, res.url);
-    results.push({ title: item.title, xPostUrl: res.url });
-  } catch (e) {
-    results.push({ title: item.title, error: String(e.message || e) });
-  }
-}
-
-console.log(JSON.stringify({ ok: true, posted: dryRun ? 0 : results.length, results }, null, 2));
+main().catch((e) => {
+  console.error("エラー: " + String(e.message || e));
+  process.exit(1);
+});

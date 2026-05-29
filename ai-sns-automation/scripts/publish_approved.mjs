@@ -45,42 +45,49 @@ async function maybeDownloadImage(url) {
   }
 }
 
-const rows = await listRowsByStatus("承認");
-if (rows.length === 0) {
-  console.log(JSON.stringify({ ok: true, published: 0, message: "承認済みの投稿はありません" }));
-  process.exit(0);
+async function main() {
+  const rows = await listRowsByStatus("承認");
+  if (rows.length === 0) {
+    console.log(JSON.stringify({ ok: true, published: 0, message: "承認済みの投稿はありません" }));
+    return;
+  }
+
+  const results = [];
+  for (const row of rows) {
+    const managementId = row["管理ID"];
+    const text = composeText(row);
+
+    if (!text) {
+      results.push({ managementId, skipped: "X本文が空" });
+      continue;
+    }
+
+    if (dryRun) {
+      results.push({ managementId, text, dryRun: true });
+      continue;
+    }
+
+    try {
+      const imagePath = await maybeDownloadImage(row["生成画像URL"]);
+      const res = await postTweet({ text, imagePath });
+      await updateRowByManagementId(managementId, {
+        "X投稿URL": res.url,
+        "ステータス": "投稿済み",
+      });
+      results.push({ managementId, xPostUrl: res.url });
+    } catch (e) {
+      await updateRowByManagementId(managementId, {
+        "ステータス": "エラー",
+        "エラー内容": String(e.message || e),
+      }).catch(() => {});
+      results.push({ managementId, error: String(e.message || e) });
+    }
+  }
+
+  console.log(JSON.stringify({ ok: true, published: dryRun ? 0 : results.length, results }, null, 2));
 }
 
-const results = [];
-for (const row of rows) {
-  const managementId = row["管理ID"];
-  const text = composeText(row);
-
-  if (!text) {
-    results.push({ managementId, skipped: "X本文が空" });
-    continue;
-  }
-
-  if (dryRun) {
-    results.push({ managementId, text, dryRun: true });
-    continue;
-  }
-
-  try {
-    const imagePath = await maybeDownloadImage(row["生成画像URL"]);
-    const res = await postTweet({ text, imagePath });
-    await updateRowByManagementId(managementId, {
-      "X投稿URL": res.url,
-      "ステータス": "投稿済み",
-    });
-    results.push({ managementId, xPostUrl: res.url });
-  } catch (e) {
-    await updateRowByManagementId(managementId, {
-      "ステータス": "エラー",
-      "エラー内容": String(e.message || e),
-    }).catch(() => {});
-    results.push({ managementId, error: String(e.message || e) });
-  }
-}
-
-console.log(JSON.stringify({ ok: true, published: dryRun ? 0 : results.length, results }, null, 2));
+main().catch((e) => {
+  console.error("エラー: " + String(e.message || e));
+  process.exit(1);
+});
