@@ -1,113 +1,65 @@
-# ShinCRAFT SNS自動投稿 初期構築ガイド（非エンジニア向け）
+# ShinCRAFT SNS自動投稿（Claude Code 中心運用）
 
-このフォルダは、ShinCRAFTのSNS投稿を「写真投入 → 内容確認 → 承認」だけで回せるようにするための初期設定一式です。
+**Claude Code が井上さんの代わりに運用を統括します。** 日常はスマホから Claude Code に
+指示するだけ。処理しきれない時のみ **コワーク → Codex → Yoom → Chrome版Claude** の順で委譲します。
 
----
+## まず読む
 
-## 1. これで何ができる？
+- `CLAUDE.md` … 運用の中核ルール（パイプライン・固定ID・委譲ポリシー）
+- `OPERATIONS.md` … Android運用マニュアル（毎日の流れ）
+- `SETUP_SECRETS.md` … 環境変数・ネットワーク設定（最初の準備）
+- `ARCHITECTURE.md` … 新旧構成と設計判断
+- `DELEGATION.md` … 委譲ポリシーの詳細
 
-初期設定を1回実行すると、Google DriveとGoogle Sheetsに以下が自動で作られます。
+## スマホからの操作
 
-- 投稿用フォルダ（投稿待ち、生成画像、投稿済みなど）
-- 投稿管理台帳（ステータス管理・本文管理）
-- テンプレートファイル
+| コマンド | 内容 |
+|---|---|
+| `/sns` | 写真取り込み→画像生成→本文生成→（承認後）X投稿 |
+| `/note-x` | noteの新着記事をXへリンク付きで投稿 |
 
-日常運用は以下だけです。
+## できること
 
-1. Android / iPadで `01_投稿待ち` に写真を入れる
-2. Google Sheetsで投稿案を確認する
-3. 問題なければステータスを `承認` にする
-4. Bufferで投稿済みを確認する
+1. **SNS投稿パイプライン**：写真 → Canvaで画像 → 本文 → 承認 → X投稿（台帳で状態管理）
+2. **note → X クロスポスト**：note新着をXへ自動投稿（重複防止つき）
 
----
+日常の手作業は「`01_投稿待ち` に写真を入れる」「Sheetsで `承認` にする」の2つだけ。
 
-## 2. 初回セットアップ手順（画面どおりに進めればOK）
+## 初回セットアップ
 
-### Step 1: Google Apps Scriptを開く
+### A. Drive / Sheets の初期構築（既存。1回だけ）
+`setup.gs` を Apps Script で実行すると、投稿用フォルダ一式と管理台帳が作られます。
+手順詳細はファイル冒頭のコメントと、本READMEの「初期構築の補足」を参照。
 
-1. ブラウザで [https://script.google.com](https://script.google.com) を開く
-2. Googleアカウントでログイン
-3. 右上の **「新しいプロジェクト」** をクリック
+### B. 台帳API（Apps Script Web App）
+`apps-script/Code.gs` をデプロイし、Claude Code から台帳を読み書きできるようにします。
+手順は `SETUP_SECRETS.md` の「Apps Script 台帳API の準備」。
 
-### Step 2: setup.gs を貼り付ける
+### C. 環境変数の登録
+X API・note・台帳APIのキー類を Claude Code Web環境の環境変数に登録します（`SETUP_SECRETS.md`）。
 
-1. 左側のファイル一覧で `コード.gs` を開く
-2. 既存の中身を全部削除
-3. このリポジトリの `ai-sns-automation/setup.gs` の内容を丸ごと貼り付ける
-4. 上部のプロジェクト名を `ShinCRAFT_SNS初期構築` などに変更して保存
+### D. 依存導入と動作確認
+```bash
+cd ai-sns-automation && npm install
+node scripts/ledger.mjs list
+node scripts/note_to_x.mjs --dry-run
+node scripts/publish_approved.mjs --dry-run
+```
 
-### Step 3: 実行する関数を選ぶ
+## 初期構築の補足（setup.gs）
 
-1. 画面上部の関数選択ドロップダウンで **`setupShinCraftSnsAutomation`** を選択
-2. 実行（▶）をクリック
+1. https://script.google.com で新規プロジェクト作成
+2. `setup.gs` を貼り付け、関数 `setupShinCraftSnsAutomation` を実行
+3. 初回権限を許可（Drive / Sheets）
+4. `AI > ShinCRAFT_SNS自動投稿` 配下のフォルダと `SNS投稿管理台帳_Shincraft` が作成される
 
-### Step 4: 初回権限を許可する
+## 秘密情報の扱い（重要）
 
-初回だけ承認画面が出ます。
+OpenAI / Buffer / X / Google などのキー・トークン・WebアプリURLは **絶対にGitに保存しない**。
+すべて環境変数（またはApps Scriptのスクリプトプロパティ）で管理します。
 
-1. 「承認が必要です」→ **権限を確認**
-2. 利用アカウントを選択
-3. 「このアプリはGoogleで確認されていません」が出た場合は
-   - **詳細** をクリック
-   - **（安全ではないページ）に移動** をクリック
-4. Drive / Sheets のアクセス権を **許可**
+## 旧ドキュメントについて
 
-### Step 5: 実行後に確認する
-
-- Google Drive の `AI` フォルダ配下に `ShinCRAFT_SNS自動投稿` ができている
-- サブフォルダ（`01_投稿待ち` など）ができている
-- `SNS投稿管理台帳_Shincraft` ができている
-- シート `投稿管理` の `ステータス` 列でプルダウンが使える
-
----
-
-## 3. すでにある状態で再実行しても大丈夫？
-
-はい。フォルダ・管理台帳は「既存があれば再利用」するため、重複を避ける設計です。
-
----
-
-## 4. 秘密情報の扱い（重要）
-
-以下は **絶対にGitHubへ保存しない** でください。
-
-- OpenAI APIキー
-- Buffer APIキー
-- Yoom認証情報
-- Google OAuthトークン
-
-このリポジトリには、秘密値ではなく「項目名だけ」を記載します（例: `.env.example`）。
-
----
-
-## 5. 次の実装で使う仕様書
-
-このフォルダには次段階のために以下を追加しています。
-
-- `YOOOM_FLOW_SPEC.md`
-- `BUFFER_API_SPEC.md`
-- `OPENAI_IMAGE_PROMPT.md`
-- `OPENAI_CAPTION_PROMPT.md`
-- `MOBILE_OPERATION_MANUAL.md`
-
-## 6. Webhook中心構成への切り替え方針（Yoomを薄くする）
-
-運用を簡素化するため、構成を以下に統一します。
-
-- Yoom: `01_投稿待ち` の新規ファイル検知 + Apps Script WebhookへPOSTのみ
-- Apps Script (`webhook.gs`): バリデーション、管理ID採番、Google Sheets追記などのロジックを集約
-- 修正作業: Yoom画面ではなくCodex主軸で実施
-- Claude Chrome: 画面操作の補助用途のみ
-
-関連ドキュメント:
-
-- `WEBHOOK_SETUP.md`（Apps Script Webアプリ化手順）
-- `YOOOM_THIN_TRIGGER.md`（Yoom最小設定）
-- `MOBILE_CODEX_OPERATION.md`（Android運用手順）
-
-### 参照する固定ID
-
-- Spreadsheet ID: `1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s`
-- 監視フォルダID (`01_投稿待ち`): `17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j`
-- 生成画像保存フォルダID (`03_生成画像`): `1eVUuN8qYuHp7h0h_I13nNS6TwuiHRcT7`
-- エラー確認フォルダID (`06_エラー確認`): `12-Wgy-eD0hOaEd8-9Ftk1cg7AjH7b2RS`
+Yoom / Codex / Buffer / OpenAI 関連の旧ドキュメントは、**フォールバック層の参考資料**として
+`legacy/` 以下に残しています（廃止ではなく、Claude Codeで処理しきれない時の選択肢）。
+位置づけは `DELEGATION.md` を参照。

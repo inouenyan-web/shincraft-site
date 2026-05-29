@@ -1,0 +1,20 @@
+{
+  "name": "shincraft-sns-automation",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ShinCRAFT SNS自動投稿 - Claude Code中心の実行スクリプト群",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "post:x": "node scripts/post_to_x.mjs",
+    "note:x": "node scripts/note_to_x.mjs",
+    "ledger:list": "node scripts/ledger.mjs list",
+    "publish": "node scripts/publish_approved.mjs"
+  },
+  "dependencies": {
+    "rss-parser": "^3.13.0",
+    "twitter-api-v2": "^1.18.0"
+  }
+}

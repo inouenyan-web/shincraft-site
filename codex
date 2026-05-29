@@ -1,1 +1,8 @@
-noteに投稿した文章をXでも同時にリンク付きで投稿してほしい
+依頼:「noteに投稿した文章をXでも同時にリンク付きで投稿してほしい」
+
+→ 実装済み。Claude Code 主軸で対応しました。
+   - スマホ操作: Claude Code で `/note-x` を実行
+   - 実装: ai-sns-automation/scripts/note_to_x.mjs（note RSS監視→X投稿、重複防止つき）
+   - 準備: ai-sns-automation/SETUP_SECRETS.md（NOTE_USERNAME と X API キーの登録）
+
+運用の統括は Claude Code。詳細は ai-sns-automation/CLAUDE.md を参照。
