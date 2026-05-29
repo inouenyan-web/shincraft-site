@@ -27,6 +27,7 @@ function doPost(e) {
     }
 
     const payload = parseJson_(e.postData.contents);
+    verifySharedToken_(e, payload);
     validatePayload_(payload);
 
     const managementId = createManagementId_();
@@ -58,6 +59,24 @@ function doPost(e) {
       ok: false,
       error: error.message
     });
+  }
+}
+
+// 共有トークン検証（後方互換）。
+// スクリプトのプロパティ SHARED_TOKEN が設定されている場合のみ検証を行う。
+// 未設定なら従来どおり素通しするため、既存フローを壊さない。
+// トークンは payload.token か、HTTPヘッダ相当の e.parameter.token のどちらかで受け取れる。
+function verifySharedToken_(e, payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty('SHARED_TOKEN');
+  if (!expected) {
+    return; // 未設定＝検証スキップ（従来動作）
+  }
+
+  const provided = (payload && payload.token) ||
+    (e && e.parameter && e.parameter.token) || '';
+
+  if (String(provided) !== String(expected)) {
+    throw new Error('認証に失敗しました。共有トークンが一致しません。');
   }
 }
 
