@@ -1,0 +1,14 @@
+{
+  "name": "shincraft-square-automation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ShinCRAFT Square カタログ一括操作（Catalog API・依存ゼロ）",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "online:dry": "node scripts/set_items_online.mjs",
+    "online:apply": "node scripts/set_items_online.mjs --apply"
+  }
+}
