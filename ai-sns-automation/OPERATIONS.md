@@ -8,7 +8,7 @@
 1. **写真を撮る → Photoomで背景透過**（スマホ）
    - 撮影した写真を Google ドライブの `AI > ShinCRAFT_photoroom` フォルダに保存。
    - Photoom アプリで背景透過処理を行い、同じ `ShinCRAFT_photoroom` フォルダに保存。
-   - ✅ **ここまでで完了。** Apps Script が5分以内に自動で `01_投稿待ち` へ移動する。
+   - ✅ **ここまでで完了。** 5分以内に自動で `01_投稿待ち` へ移動される（トリガーは `/sns` 初回実行時に自動登録）。
 
 2. **Claude Codeに指示**（claude.ai/code をスマホで開く → `shincraft-site`）
    - `/sns` と入力 → 取り込み・画像生成・本文生成まで進む。

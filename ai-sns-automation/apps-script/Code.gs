@@ -27,6 +27,7 @@ const PHOTOROOM_FOLDER_ID = '1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c';
 const INBOX_FOLDER_ID     = '17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j';
 
 function doPost(e) {
+  ensurePhotoroomTrigger_();
   try {
     if (!e || !e.postData || !e.postData.contents) {
       throw new Error('POSTボディが空です。JSONを送信してください。');
@@ -169,9 +170,27 @@ function movePhotoroomToInbox() {
 }
 
 /**
- * 5分ごとのトリガーを登録する。Apps Script エディタで一度だけ手動実行すること。
- * 二重登録を防ぐため、既存の同名トリガーは削除してから再登録する。
+ * doPost の冒頭で呼ばれ、トリガー未登録なら自動インストールする。
+ * エラーが起きても本体のAPIレスポンスを壊さないよう try/catch で包む。
  */
+function ensurePhotoroomTrigger_() {
+  try {
+    const exists = ScriptApp.getProjectTriggers().some(function(t) {
+      return t.getHandlerFunction() === 'movePhotoroomToInbox';
+    });
+    if (!exists) {
+      ScriptApp.newTrigger('movePhotoroomToInbox')
+        .timeBased()
+        .everyMinutes(5)
+        .create();
+      Logger.log('[PhotoroomSync] Trigger auto-installed.');
+    }
+  } catch (err) {
+    Logger.log('[PhotoroomSync] Trigger setup skipped: ' + err);
+  }
+}
+
+/** Apps Script エディタから手動でトリガーを登録したい場合の補助関数。 */
 function setupPhotoroomTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'movePhotoroomToInbox') {
