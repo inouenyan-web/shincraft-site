@@ -68,10 +68,20 @@ function legacyValues_(req) {
   };
 }
 
-function getSheet_(name) {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(name);
-  if (!sheet) throw new Error('シートが見つかりません: ' + name);
+function getSheet_(name, autoCreate) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    if (!autoCreate) throw new Error('シートが見つかりません: ' + name);
+    sheet = ss.insertSheet(name);
+  }
   return sheet;
+}
+
+function ensureNoteHeaders_(sheet) {
+  if (sheet.getLastColumn() < 1 || sheet.getRange(1,1).getValue() === '') {
+    sheet.getRange(1, 1, 1, 5).setValues([['guid','title','link','postedAt','xPostUrl']]);
+  }
 }
 
 function getHeaders_(sheet) {
@@ -81,7 +91,9 @@ function getHeaders_(sheet) {
 }
 
 function listRows_(sheetName) {
-  const sheet = getSheet_(sheetName);
+  const isNote = sheetName === 'note連携';
+  const sheet = getSheet_(sheetName, isNote);
+  if (isNote) ensureNoteHeaders_(sheet);
   const values = sheet.getDataRange().getValues();
   if (values.length < 2) return [];
   const headers = values[0];
@@ -95,7 +107,9 @@ function listRows_(sheetName) {
 }
 
 function appendRow_(sheetName, values) {
-  const sheet = getSheet_(sheetName);
+  const isNote = sheetName === 'note連携';
+  const sheet = getSheet_(sheetName, isNote);
+  if (isNote) ensureNoteHeaders_(sheet);
   const headers = getHeaders_(sheet);
   const now = new Date();
 
