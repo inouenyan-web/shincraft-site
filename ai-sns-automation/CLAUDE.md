@@ -89,6 +89,7 @@ node scripts/ledger.mjs status 承認            # 台帳の承認行を確認
 | シート名 | `投稿管理` |
 | AI親フォルダID | `1Nl5ksVJuwEuDZgyb0jr9V6Os9YLzGBcj` |
 | プロジェクト親フォルダID | `12yPWPpTztPtRQmlPoehCJNi-NUM0Njkv` |
+| `ShinCRAFT_photoroom` | `1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c` |
 | `01_投稿待ち` | `17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j` |
 | `03_生成画像` | `1eVUuN8qYuHp7h0h_I13nNS6TwuiHRcT7` |
 | `06_エラー確認` | `12-Wgy-eD0hOaEd8-9Ftk1cg7AjH7b2RS` |

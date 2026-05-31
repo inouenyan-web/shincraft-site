@@ -21,8 +21,10 @@
 //   ※コード変更時は「デプロイを管理」から既存デプロイを編集すればURLは維持される.
 // =====================================================================
 
-const SPREADSHEET_ID = '1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s';
-const DEFAULT_SHEET = '投稿管理';
+const SPREADSHEET_ID      = '1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s';
+const DEFAULT_SHEET       = '投稿管理';
+const PHOTOROOM_FOLDER_ID = '1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c';
+const INBOX_FOLDER_ID     = '17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j';
 
 function doPost(e) {
   try {
@@ -141,4 +143,44 @@ function createManagementId_(now) {
 
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// =====================================================================
+// Photoroom → 01_投稿待ち 自動転送
+// =====================================================================
+
+/**
+ * ShinCRAFT_photoroom に保存されたファイルを 01_投稿待ち へ移動する。
+ * setupPhotoroomTrigger() で登録した5分ごとのトリガーから呼び出す。
+ */
+function movePhotoroomToInbox() {
+  const src   = DriveApp.getFolderById(PHOTOROOM_FOLDER_ID);
+  const dest  = DriveApp.getFolderById(INBOX_FOLDER_ID);
+  const files = src.getFiles();
+  const moved = [];
+  while (files.hasNext()) {
+    const f = files.next();
+    f.moveTo(dest);
+    moved.push(f.getName());
+  }
+  if (moved.length > 0) {
+    Logger.log('[PhotoroomSync] moved ' + moved.length + ' file(s): ' + moved.join(', '));
+  }
+}
+
+/**
+ * 5分ごとのトリガーを登録する。Apps Script エディタで一度だけ手動実行すること。
+ * 二重登録を防ぐため、既存の同名トリガーは削除してから再登録する。
+ */
+function setupPhotoroomTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'movePhotoroomToInbox') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger('movePhotoroomToInbox')
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  Logger.log('[PhotoroomSync] Trigger registered (every 5 minutes).');
 }
