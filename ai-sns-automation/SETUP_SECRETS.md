@@ -16,8 +16,8 @@
 | `GAS_WEBAPP_URL` | 台帳API（Apps Script WebアプリURL） | Apps Scriptのデプロイ |
 | `GAS_SHARED_TOKEN` | 台帳API認証トークン | 任意の長い乱数。下記参照 |
 | `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | 任意 |
-
-> Instagram自動投稿（Graph API）は当面使わないため不要。使う段階で別途追記する。
+| `BUFFER_ACCESS_TOKEN` | Instagram投稿（Buffer経由） | Buffer → Settings → Apps → Access Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Bufferの対象Instagramプロファイルのid | 下記「Buffer設定」参照 |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -64,11 +64,41 @@ for h in registry.npmjs.org note.com api.x.com script.google.com example.com; do
    note→X の重複防止記録が残る（無い場合、初回は空として動作）。
 6. コード更新時は「デプロイを管理」から既存デプロイを編集すればURLは維持される。
 
-## 5. 動作確認
+## 5. Buffer設定（Instagram投稿）
+
+### 5-1. Bufferアカウント準備
+1. [buffer.com](https://buffer.com) にサインアップ（無料プランで可）
+2. Instagram Business アカウントをBufferに接続（Channels → Connect）
+3. Settings → Apps → Access Token を発行
+
+### 5-2. プロファイルIDの取得
+```bash
+curl "https://api.bufferapp.com/1/profiles.json?access_token=<YOUR_TOKEN>"
+# レスポンス中の service=instagram の "id" フィールドを BUFFER_INSTAGRAM_PROFILE_ID に設定
+```
+
+### 5-3. 環境変数を登録
+| 変数名 | 値 |
+|---|---|
+| `BUFFER_ACCESS_TOKEN` | Step 5-1で取得したAccess Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Step 5-2で取得したInstagramプロファイルID |
+
+### 5-4. ネットワーク許可ホスト追加
+`api.bufferapp.com` … Buffer Publish API
+
+### 5-5. 動作確認
+```bash
+cd ai-sns-automation && node scripts/post_to_buffer.mjs --dry-run
+```
+
+---
+
+## 6. 動作確認（全体）
 
 ```bash
 cd ai-sns-automation && npm install
-node scripts/ledger.mjs list            # 台帳が読めるか
-node scripts/note_to_x.mjs --dry-run    # note新着が拾えるか
-node scripts/publish_approved.mjs --dry-run   # 承認行の投稿内容
+node scripts/ledger.mjs list                      # 台帳が読めるか
+node scripts/note_to_x.mjs --dry-run              # note新着が拾えるか
+node scripts/publish_approved.mjs --dry-run       # 承認行のX投稿内容確認
+node scripts/post_to_buffer.mjs --dry-run         # 承認行のInstagram投稿内容確認
 ```

@@ -29,7 +29,7 @@ Claude Code に指示を出すだけ** で回ることを目指します。
 
 ## 1. このリポジトリでできること
 
-- **SNS投稿パイプライン**（写真 → 画像生成 → 本文生成 → 承認 → X投稿）を Claude Code が実行
+- **SNS投稿パイプライン**（トレンド収集 → 写真取り込み → 画像生成 → 本文生成 → 承認 → X・Instagram投稿）を Claude Code が実行
 - **note → X クロスポスト**（note新着記事をXへリンク付きで自動投稿）
 - 上記の状態管理（Google Sheets 台帳）の読み書き
 
@@ -43,23 +43,24 @@ Claude Code に指示を出すだけ** で回ることを目指します。
 
 | 段階 | 実行主体 | 内容 |
 |---|---|---|
-| ①取り込み | Claude Code + Drive MCP | `01_投稿待ち` の新規写真を読み、台帳に行追加（`ステータス=未確認`） |
-| ②画像生成 | Claude Code + Canva MCP | 販促画像を生成し `03_生成画像` に保存、`生成画像URL` を台帳へ |
-| ③本文生成 | Claude Code | Instagram本文 / X本文 / ハッシュタグ を生成し台帳へ（`ステータス=承認待ち`相当） |
-| ④承認 | **人間（井上さん）** | Sheetsで内容確認し `ステータス=承認` に変更（スマホ可） |
-| ⑤投稿 | Claude Code + X API | `承認` 行をXへ投稿し `X投稿URL`/`ステータス=投稿済み` を台帳へ |
-
-- Instagram への自動投稿は API要件が重い（Graph API + 審査）ため **当面は手動 or Buffer**。
-  まずは X 投稿と note→X を確実に回す。詳細は `ARCHITECTURE.md`。
+| ①トレンド収集 | Claude Code + WebSearch | Instagramのハンドメイド商品トレンドを調査し `data/instagram_trends.json` へキャッシュ（24h有効） |
+| ②取り込み | Claude Code + Drive MCP | `01_投稿待ち` の新規写真を読み、台帳に行追加（`ステータス=未確認`） |
+| ③画像生成 | Claude Code + Canva MCP | トレンドを反映した販促画像を生成し `03_生成画像` に保存、`生成画像URL` を台帳へ |
+| ④本文生成 | Claude Code | Instagram本文 / X本文 / ハッシュタグ をトレンドを参考に生成し台帳へ（`ステータス=承認待ち`相当） |
+| ⑤承認 | **人間（井上さん）** | Sheetsで内容確認し `ステータス=承認` に変更（スマホ可） |
+| ⑥X投稿 | Claude Code + X API | `承認` 行をXへ投稿し `X投稿URL`/`ステータス=投稿済み` を台帳へ |
+| ⑦Instagram投稿 | Claude Code + Buffer API | `承認` 行をBufferへ送り Instagram に投稿（`Buffer投稿ID`/`ステータス=投稿予約済み`） |
 
 ### 実行コマンド（Claude Codeが端末で実行）
 ```bash
-cd ai-sns-automation && npm install      # 初回のみ（依存導入）
-node scripts/publish_approved.mjs --dry-run   # 承認済みの投稿内容を確認
-node scripts/publish_approved.mjs             # 実投稿
-node scripts/note_to_x.mjs --dry-run          # note→X 対象確認
-node scripts/note_to_x.mjs                     # note→X 実投稿
-node scripts/ledger.mjs status 承認            # 台帳の承認行を確認
+cd ai-sns-automation && npm install                        # 初回のみ（依存導入）
+node scripts/ledger.mjs status 承認                        # 台帳の承認行を確認
+node scripts/publish_approved.mjs --dry-run               # 承認済みX投稿内容を確認
+node scripts/publish_approved.mjs                         # X投稿を実行
+node scripts/post_to_buffer.mjs --dry-run                 # 承認済みInstagram投稿内容を確認
+node scripts/post_to_buffer.mjs                           # Instagram（Buffer経由）を実行
+node scripts/note_to_x.mjs --dry-run                      # note→X 対象確認
+node scripts/note_to_x.mjs                                # note→X 実投稿
 ```
 
 ---
