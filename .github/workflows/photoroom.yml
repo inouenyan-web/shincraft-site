@@ -1,4 +1,4 @@
-name: PhotoRoom 背景透過（1時間ごと）
+name: 背景透過バッチ（1時間ごと）
 
 on:
   schedule:
@@ -21,15 +21,20 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ai-sns-automation/package.json
 
+      - name: AIモデルキャッシュ
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/imgly
+          key: imgly-bg-removal-models-v1
+
       - name: 依存パッケージをインストール
         run: npm ci
         working-directory: ai-sns-automation
 
-      - name: PhotoRoom 背景透過バッチ実行
-        run: node scripts/batch_photoroom.mjs
+      - name: 背景透過バッチ実行
+        run: node scripts/batch_bg_remove.mjs
         working-directory: ai-sns-automation
         env:
           GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
           GAS_SHARED_TOKEN: ${{ secrets.GAS_SHARED_TOKEN }}
-          PHOTOROOM_API_KEY: ${{ secrets.PHOTOROOM_API_KEY }}
           DRIVE_NOBG_FOLDER_ID: ${{ secrets.DRIVE_NOBG_FOLDER_ID }}
