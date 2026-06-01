@@ -20,11 +20,17 @@ Google Drive の **「photoroom」フォルダに画像を置くだけ** で、P
 
 ## 1. 入力フォルダ「photoroom」を用意
 
-Google Drive で背景透過したい画像を入れる **`photoroom` フォルダ**を作成し、その
-**フォルダID**を控えます（フォルダを開いたときのURL末尾
-`https://drive.google.com/drive/folders/★ここがID★`）。
+背景透過したい画像を入れるフォルダは **`ShinCRAFT_photoroom` を使う**（井上さんと確認済み）。
+このフォルダは既に存在し、IDは以下：
+
+```
+PHOTOROOM_FOLDER_ID = 1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c
+```
+
+（URL: https://drive.google.com/drive/folders/1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c ）
 
 > `_透過済み` / `_処理済み` / `_エラー` のサブフォルダは初回実行時に自動で作られます。
+> 別フォルダにしたい場合のみ、そのフォルダを開いてURL末尾のIDに差し替える。
 
 ## 2. PhotoRoom APIキーを取得
 
