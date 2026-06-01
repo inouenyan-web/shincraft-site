@@ -40,6 +40,14 @@ function doPost(e) {
         return json_(appendRow_(req.sheet || DEFAULT_SHEET, req.values || legacyValues_(req)));
       case 'update':
         return json_(updateRow_(req.sheet || DEFAULT_SHEET, req.keyColumn, req.keyValue, req.updates || {}));
+      case 'setupSheet':
+        return json_(setupSheet_());
+      case 'listFolder':
+        return json_({ ok: true, files: listFolder_(req.folderId) });
+      case 'getFileBase64':
+        return json_({ ok: true, base64: getFileBase64_(req.fileId), mimeType: getFileMimeType_(req.fileId) });
+      case 'uploadFile':
+        return json_(uploadFile_(req.folderId, req.fileName, req.base64, req.mimeType || 'image/png'));
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -132,6 +140,67 @@ function updateRow_(sheetName, keyColumn, keyValue, updates) {
     }
   }
   throw new Error('該当行が見つかりません: ' + keyColumn + '=' + keyValue);
+}
+
+// --- セットアップ ---
+
+function setupSheet_() {
+  var sheet = getSheet_(DEFAULT_SHEET);
+  var headers = getHeaders_(sheet);
+  var added = [];
+  var required = ['背景透過画像URL'];
+  required.forEach(function(col) {
+    if (headers.indexOf(col) < 0) {
+      sheet.getRange(1, headers.length + 1).setValue(col);
+      headers.push(col);
+      added.push(col);
+    }
+  });
+  return { ok: true, added: added, message: added.length > 0 ? '列を追加しました: ' + added.join(', ') : '列は既に存在します' };
+}
+
+// --- Drive 操作 ---
+
+function listFolder_(folderId) {
+  if (!folderId) throw new Error('folderIdが必要です。');
+  var folder = DriveApp.getFolderById(folderId);
+  var files = folder.getFiles();
+  var result = [];
+  while (files.hasNext()) {
+    var file = files.next();
+    var mime = file.getMimeType();
+    if (mime.indexOf('image/') === 0) {
+      result.push({
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: mime,
+        url: file.getUrl(),
+        size: file.getSize(),
+      });
+    }
+  }
+  return result;
+}
+
+function getFileBase64_(fileId) {
+  if (!fileId) throw new Error('fileIdが必要です。');
+  var bytes = DriveApp.getFileById(fileId).getBlob().getBytes();
+  return Utilities.base64Encode(bytes);
+}
+
+function getFileMimeType_(fileId) {
+  if (!fileId) throw new Error('fileIdが必要です。');
+  return DriveApp.getFileById(fileId).getMimeType();
+}
+
+function uploadFile_(folderId, fileName, base64, mimeType) {
+  if (!folderId || !fileName || !base64) throw new Error('folderId/fileName/base64 が必要です。');
+  var bytes = Utilities.base64Decode(base64);
+  var blob = Utilities.newBlob(bytes, mimeType, fileName);
+  var folder = DriveApp.getFolderById(folderId);
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return { ok: true, fileId: file.getId(), url: file.getUrl(), name: file.getName() };
 }
 
 function createManagementId_(now) {

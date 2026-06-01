@@ -45,11 +45,12 @@ Claude Code に指示を出すだけ** で回ることを目指します。
 |---|---|---|
 | ①トレンド収集 | Claude Code + WebSearch | Instagramのハンドメイド商品トレンドを調査し `data/instagram_trends.json` へキャッシュ（24h有効） |
 | ②取り込み | Claude Code + Drive MCP | `01_投稿待ち` の新規写真を読み、台帳に行追加（`ステータス=未確認`） |
-| ③画像生成 | Claude Code + Canva MCP | トレンドを反映した販促画像を生成し `03_生成画像` に保存、`生成画像URL` を台帳へ |
-| ④本文生成 | Claude Code | Instagram本文 / X本文 / ハッシュタグ をトレンドを参考に生成し台帳へ（`ステータス=承認待ち`相当） |
-| ⑤承認 | **人間（井上さん）** | Sheetsで内容確認し `ステータス=承認` に変更（スマホ可） |
-| ⑥X投稿 | Claude Code + X API | `承認` 行をXへ投稿し `X投稿URL`/`ステータス=投稿済み` を台帳へ |
-| ⑦Instagram投稿 | Claude Code + Buffer API | `承認` 行をBufferへ送り Instagram に投稿（`Buffer投稿ID`/`ステータス=投稿予約済み`） |
+| ③背景透過 | Claude Code + imgly | 商品写真の背景をローカルAIで透過し `02_背景透過済み` に保存、`背景透過画像URL` を台帳へ（1時間ごと自動実行） |
+| ④画像生成 | Claude Code + Canva MCP | 背景透過済み画像 × トレンドを反映した販促画像を生成し `03_生成画像` に保存、`生成画像URL` を台帳へ |
+| ⑤本文生成 | Claude Code | Instagram本文 / X本文 / ハッシュタグ をトレンドを参考に生成し台帳へ（`ステータス=承認待ち`相当） |
+| ⑥承認 | **人間（井上さん）** | Sheetsで内容確認し `ステータス=承認` に変更（スマホ可） |
+| ⑦X投稿 | Claude Code + X API | `承認` 行をXへ投稿し `X投稿URL`/`ステータス=投稿済み` を台帳へ |
+| ⑧Instagram投稿 | Claude Code + Buffer API | `承認` 行をBufferへ送り Instagram に投稿（`Buffer投稿ID`/`ステータス=投稿予約済み`） |
 
 ### 実行コマンド（Claude Codeが端末で実行）
 ```bash
@@ -91,6 +92,7 @@ node scripts/note_to_x.mjs                                # note→X 実投稿
 | AI親フォルダID | `1Nl5ksVJuwEuDZgyb0jr9V6Os9YLzGBcj` |
 | プロジェクト親フォルダID | `12yPWPpTztPtRQmlPoehCJNi-NUM0Njkv` |
 | `01_投稿待ち` | `17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j` |
+| `02_背景透過済み` | `1kOBaGvnlmONg1t0eNFyIsdUZ4oeZPXOm` |
 | `03_生成画像` | `1eVUuN8qYuHp7h0h_I13nNS6TwuiHRcT7` |
 | `06_エラー確認` | `12-Wgy-eD0hOaEd8-9Ftk1cg7AjH7b2RS` |
 
