@@ -11,7 +11,8 @@
     "post:x": "node scripts/post_to_x.mjs",
     "note:x": "node scripts/note_to_x.mjs",
     "ledger:list": "node scripts/ledger.mjs list",
-    "publish": "node scripts/publish_approved.mjs"
+    "publish": "node scripts/publish_approved.mjs",
+    "publish:instagram": "node scripts/post_to_buffer.mjs"
   },
   "dependencies": {
     "rss-parser": "^3.13.0",
