@@ -9,6 +9,7 @@
 スマホからの定型操作：
 - `/sns` … SNS投稿パイプラインを進める
 - `/note-x` … noteの新着記事をXへ投稿する
+- `/photoroom` … Driveの `ShinCRAFT_photoroom` の画像を背景透過する（鍵不要）
 
 秘密情報（APIキー等）は Git に保存せず、環境変数で渡します
 （`ai-sns-automation/SETUP_SECRETS.md`）。

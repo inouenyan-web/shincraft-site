@@ -31,12 +31,15 @@ Claude Code に指示を出すだけ** で回ることを目指します。
 
 - **SNS投稿パイプライン**（写真 → 画像生成 → 本文生成 → 承認 → X投稿）を Claude Code が実行
 - **note → X クロスポスト**（note新着記事をXへリンク付きで自動投稿）
-- **PhotoRoom 背景透過**（Driveの `photoroom` フォルダに画像を置くと自動で背景透過。`PHOTOROOM_SETUP.md`）
+- **背景透過**（`ShinCRAFT_photoroom` の画像を背景透過）。2方式：
+  - A. `/photoroom` … Claudeがローカル透過(rembg)。**鍵不要・無料**だがセッション稼働中のみ
+  - B. PhotoRoom + Apps Script … **24時間自動**だがPhotoRoom鍵が必要（`PHOTOROOM_SETUP.md`）
 - 上記の状態管理（Google Sheets 台帳）の読み書き
 
 日常のスマホ操作：
 - `/sns` … 投稿パイプラインを進める
 - `/note-x` … noteの新着をXへ投稿する
+- `/photoroom` … `ShinCRAFT_photoroom` の画像を背景透過（鍵不要・Claude実行）
 
 ---
 
@@ -93,6 +96,7 @@ node scripts/ledger.mjs status 承認            # 台帳の承認行を確認
 | `01_投稿待ち` | `17BVeGqN2A7Kj_ppMxGXz-Nejim7UQj0j` |
 | `03_生成画像` | `1eVUuN8qYuHp7h0h_I13nNS6TwuiHRcT7` |
 | `06_エラー確認` | `12-Wgy-eD0hOaEd8-9Ftk1cg7AjH7b2RS` |
+| `ShinCRAFT_photoroom`（背景透過の入力） | `1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c` |
 
 **ステータス値**：`未確認` / `修正` / `承認` / `投稿予約済み` / `投稿済み` / `エラー`
 
