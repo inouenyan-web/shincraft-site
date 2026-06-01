@@ -17,6 +17,7 @@
 | `GAS_SHARED_TOKEN` | 台帳API認証トークン | 任意の長い乱数。下記参照 |
 | `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | 任意 |
 | `PHOTOROOM_API_KEY` | 背景透過処理（PhotoRoom API） | [PhotoRoom API](https://www.photoroom.com/api) |
+| `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
 
 > Instagram自動投稿（Graph API）は当面使わないため不要。使う段階で別途追記する。
 
@@ -66,7 +67,25 @@ for h in registry.npmjs.org note.com api.x.com script.google.com example.com; do
    note→X の重複防止記録が残る（無い場合、初回は空として動作）。
 6. コード更新時は「デプロイを管理」から既存デプロイを編集すればURLは維持される。
 
-## 5. 動作確認
+## 5. PhotoRoom 定期実行（GitHub Actions）の準備
+
+GitHub Actions で1時間ごとの自動処理を動かすには、GitHub リポジトリの
+**Settings > Secrets and variables > Actions** に以下を登録する：
+
+| Secret名 | 値 |
+|---|---|
+| `GAS_WEBAPP_URL` | Apps Script Web アプリのURL |
+| `GAS_SHARED_TOKEN` | 台帳API認証トークン |
+| `PHOTOROOM_API_KEY` | PhotoRoom APIキー |
+| `DRIVE_NOBG_FOLDER_ID` | `02_背景透過済み` フォルダのID |
+
+登録後、GitHub の **Actions タブ > PhotoRoom 背景透過 > Run workflow** で手動テスト実行できる。
+
+その後は毎時0分（UTC）= 日本時間 毎時9分に自動実行される。
+
+また、Google Sheets の「投稿管理」シートに **`背景透過画像URL`** 列を追加する必要がある。
+
+## 6. 動作確認
 
 ```bash
 cd ai-sns-automation && npm install
