@@ -19,6 +19,19 @@
 
 > Instagram自動投稿（Graph API）は当面使わないため不要。使う段階で別途追記する。
 
+### PhotoRoom 背景透過（Apps Script側のスクリプトプロパティ）
+
+`photoroom` フォルダに画像を置くと自動で背景透過する機能（`apps-script/PhotoRoom.gs`）は、
+Google のサーバー上で動くため **Claude Code Web環境の環境変数ではなく、Apps Script の
+スクリプトプロパティ**にキーを登録します。詳細は `PHOTOROOM_SETUP.md`。
+
+| プロパティ名 | 用途 | 取得元 |
+|---|---|---|
+| `PHOTOROOM_API_KEY` | PhotoRoom API認証 | PhotoRoom API ダッシュボード |
+| `PHOTOROOM_FOLDER_ID` | 入力(photoroom)フォルダID | DriveのフォルダURL末尾 |
+| `PHOTOROOM_SIZE` | （任意）出力解像度 full/hd/medium/preview | 任意 |
+| `PHOTOROOM_BG_COLOR` | （任意）透過の代わりに単色背景にする | 任意 |
+
 ## 2. ネットワーク許可ホスト（重要）
 
 > ⚠️ **既定の制限ポリシーでは note / X / Google への通信がブロックされる。**

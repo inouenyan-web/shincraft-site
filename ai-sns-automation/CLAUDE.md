@@ -31,6 +31,7 @@ Claude Code に指示を出すだけ** で回ることを目指します。
 
 - **SNS投稿パイプライン**（写真 → 画像生成 → 本文生成 → 承認 → X投稿）を Claude Code が実行
 - **note → X クロスポスト**（note新着記事をXへリンク付きで自動投稿）
+- **PhotoRoom 背景透過**（Driveの `photoroom` フォルダに画像を置くと自動で背景透過。`PHOTOROOM_SETUP.md`）
 - 上記の状態管理（Google Sheets 台帳）の読み書き
 
 日常のスマホ操作：
@@ -112,4 +113,5 @@ node scripts/ledger.mjs status 承認            # 台帳の承認行を確認
 - `ARCHITECTURE.md` … 新旧構成と移行方針
 - `DELEGATION.md` … Claude Code を主軸とした委譲ポリシー（コワーク→Codex→Yoom→Chrome）
 - `OPERATIONS.md` … Android運用マニュアル
+- `PHOTOROOM_SETUP.md` … Drive×PhotoRoom 背景透過の自動化セットアップ
 - `SETUP_SECRETS.md` … 環境変数・ネットワーク設定
