@@ -40,6 +40,8 @@ function doPost(e) {
         return json_(appendRow_(req.sheet || DEFAULT_SHEET, req.values || legacyValues_(req)));
       case 'update':
         return json_(updateRow_(req.sheet || DEFAULT_SHEET, req.keyColumn, req.keyValue, req.updates || {}));
+      case 'setupSheet':
+        return json_(setupSheet_());
       case 'listFolder':
         return json_({ ok: true, files: listFolder_(req.folderId) });
       case 'getFileBase64':
@@ -138,6 +140,23 @@ function updateRow_(sheetName, keyColumn, keyValue, updates) {
     }
   }
   throw new Error('該当行が見つかりません: ' + keyColumn + '=' + keyValue);
+}
+
+// --- セットアップ ---
+
+function setupSheet_() {
+  var sheet = getSheet_(DEFAULT_SHEET);
+  var headers = getHeaders_(sheet);
+  var added = [];
+  var required = ['背景透過画像URL'];
+  required.forEach(function(col) {
+    if (headers.indexOf(col) < 0) {
+      sheet.getRange(1, headers.length + 1).setValue(col);
+      headers.push(col);
+      added.push(col);
+    }
+  });
+  return { ok: true, added: added, message: added.length > 0 ? '列を追加しました: ' + added.join(', ') : '列は既に存在します' };
 }
 
 // --- Drive 操作 ---
