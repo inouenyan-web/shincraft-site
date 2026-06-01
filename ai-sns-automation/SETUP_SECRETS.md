@@ -17,8 +17,8 @@
 | `GAS_SHARED_TOKEN` | 台帳API認証トークン | 任意の長い乱数。下記参照 |
 | `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | 任意 |
 | `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
-
-> Instagram自動投稿（Graph API）は当面使わないため不要。使う段階で別途追記する。
+| `BUFFER_ACCESS_TOKEN` | Instagram投稿（Buffer経由） | Buffer → Settings → Apps → Access Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Bufferの対象Instagramプロファイルのid | 下記「Buffer設定」参照 |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -65,7 +65,7 @@ for h in registry.npmjs.org note.com api.x.com script.google.com example.com; do
    note→X の重複防止記録が残る（無い場合、初回は空として動作）。
 6. コード更新時は「デプロイを管理」から既存デプロイを編集すればURLは維持される。
 
-## 5. PhotoRoom 定期実行（GitHub Actions）の準備
+## 5. 背景透過 定期実行（GitHub Actions）の準備
 
 GitHub Actions で1時間ごとの自動処理を動かすには、GitHub リポジトリの
 **Settings > Secrets and variables > Actions** に以下を登録する：
@@ -76,17 +76,49 @@ GitHub Actions で1時間ごとの自動処理を動かすには、GitHub リポ
 | `GAS_SHARED_TOKEN` | 台帳API認証トークン |
 | `DRIVE_NOBG_FOLDER_ID` | `02_背景透過済み` フォルダのID |
 
-登録後、GitHub の **Actions タブ > PhotoRoom 背景透過 > Run workflow** で手動テスト実行できる。
+登録後、GitHub の **Actions タブ > 背景透過バッチ > Run workflow** で手動テスト実行できる。
 
 その後は毎時0分（UTC）= 日本時間 毎時9分に自動実行される。
 
 また、Google Sheets の「投稿管理」シートに **`背景透過画像URL`** 列を追加する必要がある。
 
-## 6. 動作確認
+---
+
+## 6. Buffer設定（Instagram投稿）
+
+### 6-1. Bufferアカウント準備
+1. [buffer.com](https://buffer.com) にサインアップ（無料プランで可）
+2. Instagram Business アカウントをBufferに接続（Channels → Connect）
+3. Settings → Apps → Access Token を発行
+
+### 6-2. プロファイルIDの取得
+```bash
+curl "https://api.bufferapp.com/1/profiles.json?access_token=<YOUR_TOKEN>"
+# レスポンス中の service=instagram の "id" フィールドを BUFFER_INSTAGRAM_PROFILE_ID に設定
+```
+
+### 6-3. 環境変数を登録
+| 変数名 | 値 |
+|---|---|
+| `BUFFER_ACCESS_TOKEN` | Step 6-1で取得したAccess Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Step 6-2で取得したInstagramプロファイルID |
+
+### 6-4. ネットワーク許可ホスト追加
+`api.bufferapp.com` … Buffer Publish API
+
+### 6-5. 動作確認
+```bash
+cd ai-sns-automation && node scripts/post_to_buffer.mjs --dry-run
+```
+
+---
+
+## 7. 動作確認（全体）
 
 ```bash
 cd ai-sns-automation && npm install
-node scripts/ledger.mjs list            # 台帳が読めるか
-node scripts/note_to_x.mjs --dry-run    # note新着が拾えるか
-node scripts/publish_approved.mjs --dry-run   # 承認行の投稿内容
+node scripts/ledger.mjs list                      # 台帳が読めるか
+node scripts/note_to_x.mjs --dry-run              # note新着が拾えるか
+node scripts/publish_approved.mjs --dry-run       # 承認行のX投稿内容確認
+node scripts/post_to_buffer.mjs --dry-run         # 承認行のInstagram投稿内容確認
 ```
