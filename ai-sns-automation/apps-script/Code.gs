@@ -40,6 +40,8 @@ function doPost(e) {
         return json_(appendRow_(req.sheet || DEFAULT_SHEET, req.values || legacyValues_(req)));
       case 'update':
         return json_(updateRow_(req.sheet || DEFAULT_SHEET, req.keyColumn, req.keyValue, req.updates || {}));
+      case 'ensureSheet':
+        return json_(ensureSheet_(req.sheet, req.headers || []));
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -132,6 +134,21 @@ function updateRow_(sheetName, keyColumn, keyValue, updates) {
     }
   }
   throw new Error('該当行が見つかりません: ' + keyColumn + '=' + keyValue);
+}
+
+// シートが無ければヘッダー付きで作成する。あれば何もしない（冪等）。
+function ensureSheet_(sheetName, headers) {
+  if (!sheetName) throw new Error('sheetが必要です。');
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(sheetName);
+  if (sheet) {
+    return { ok: true, status: 'exists', sheet: sheetName };
+  }
+  sheet = ss.insertSheet(sheetName);
+  if (headers && headers.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  return { ok: true, status: 'created', sheet: sheetName, headers: headers };
 }
 
 function createManagementId_(now) {

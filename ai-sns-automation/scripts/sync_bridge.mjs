@@ -6,16 +6,20 @@
 //   claude.ai(Chrome版)が作業 → Chrome拡張がシートへ1行追記 → このスクリプトが検知
 //
 // 使い方:
-//   node scripts/sync_bridge.mjs            # 未処理行を一覧表示
+//   node scripts/sync_bridge.mjs --init      # 連携ブリッジシートを作成（冪等）
+//   node scripts/sync_bridge.mjs             # 未処理行を一覧表示
 //   node scripts/sync_bridge.mjs --mark <id> # 指定idを処理済みにする
 //   /loop 30s node scripts/sync_bridge.mjs   # 定期ポーリング（Claude Code側）
 //
 // 必要env: GAS_WEBAPP_URL, GAS_SHARED_TOKEN
 // 前提: スプシに「連携ブリッジ」シート（列: id / timestamp / type / payload / status）が存在すること
+//       無い場合は --init で自動作成できる（GAS側に ensureSheet アクションが必要）
 
 import { callGas } from "./lib/ledger.mjs";
 
 const BRIDGE_SHEET = "連携ブリッジ";
+const BRIDGE_HEADERS = ["id", "timestamp", "type", "payload", "status"];
+const doInit = process.argv.includes("--init");
 const markIndex = process.argv.indexOf("--mark");
 const markId = markIndex >= 0 ? process.argv[markIndex + 1] : null;
 
@@ -35,7 +39,20 @@ async function markProcessed(id) {
   console.log(`処理済みに更新: id=${id}`);
 }
 
+async function initSheet() {
+  const json = await callGas({
+    action: "ensureSheet",
+    sheet: BRIDGE_SHEET,
+    headers: BRIDGE_HEADERS,
+  });
+  console.log(`連携ブリッジシート: ${json.status}（${BRIDGE_SHEET}）`);
+}
+
 async function main() {
+  if (doInit) {
+    await initSheet();
+    return;
+  }
   if (markId) {
     await markProcessed(markId);
     return;
