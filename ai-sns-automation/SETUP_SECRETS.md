@@ -64,6 +64,38 @@ for h in registry.npmjs.org note.com api.x.com script.google.com example.com; do
    note→X の重複防止記録が残る（無い場合、初回は空として動作）。
 6. コード更新時は「デプロイを管理」から既存デプロイを編集すればURLは維持される。
 
+### 4-1. ⚠️ 「未知のaction」エラーが出たときの最短復旧（2026-06 の教訓）
+
+過去に、デプロイ済みGASが古い版のまま固定され、`listFolder` / `uploadFile` 等の
+Drive操作アクションが反映されず `{"ok":false,"error":"未知のaction: uploadFile"}`
+が返り続ける事象が発生した。スプレッドシートにバインドされたプロジェクトと、
+実際にデプロイされているプロジェクトが別物になっていたのが原因。
+
+**最短復旧手順（既存プロジェクト探しで迷ったら、新規作成が一番速い）:**
+
+1. https://script.google.com →「新しいプロジェクト」
+2. `apps-script/Code.gs` の全文を貼り付けて保存。
+3. ⚙️ プロジェクトの設定 > スクリプトプロパティ に `SHARED_TOKEN` を登録
+   （`GAS_SHARED_TOKEN` 環境変数と**同じ値**にする）。
+4. デプロイ > 新しいデプロイ > ウェブアプリ（実行: 自分 / アクセス: 全員）。
+5. 認証ダイアログはオーナー本人が承認（Claude Code / Chrome版では代行不可）。
+6. 発行URLをブラウザで開き `{"ok":true,"status":"alive"}` を確認。
+7. **発行URLを環境変数 `GAS_WEBAPP_URL` に更新**（← これを忘れると旧URLを叩き続ける）。
+
+> 健康診断: `curl -sL "$GAS_WEBAPP_URL"` で `{"ok":true,"status":"alive"}` が返れば最新版。
+> `Script function not found: doGet` が返るなら古い版が動いている＝再デプロイが必要。
+
+### 4-2. 一括背景透過→Driveアップロードの全自動実行
+
+`GAS_WEBAPP_URL` が最新版（uploadFile対応）を指していれば、以下だけで
+**取り込み→背景透過→アップロードまでコピペ不要で全自動**になる:
+
+```bash
+cd ai-sns-automation
+node scripts/process_photoroom.mjs --dry-run   # 対象確認
+node scripts/process_photoroom.mjs             # 実処理（背景透過してDriveへ）
+```
+
 ## 5. 動作確認
 
 ```bash
