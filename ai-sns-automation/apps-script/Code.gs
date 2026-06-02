@@ -1,13 +1,18 @@
 // ShinCRAFT SNS自動投稿 — Apps Script JSON API
 // =====================================================================
-// 役割: Claude Codeなどの外部スクリプトから、投稿管理台帳(Google Sheets)を
-//       読み書きするための薄いJSON API. サービスアカウント不要.
+// 役割: Claude Codeなどの外部スクリプトから、投稿管理台帳(Google Sheets)と
+//       Driveファイルを読み書きするための薄いJSON API. サービスアカウント不要.
 //
 // 対応アクション(POST body):
 //   { token, action: "list",   sheet }                         -> 全行をオブジェクト配列で返す
 //   { token, action: "append", sheet, values:{列名:値,...} }     -> 1行追加
 //   { token, action: "update", sheet, keyColumn, keyValue,
 //            updates:{列名:値,...} }                            -> 該当行の指定列を更新
+//   { token, action: "ensureSheet", sheet, headers:[...] }      -> シートが無ければ作成
+//   { token, action: "setupSheet" }                            -> 必須列を補完
+//   { token, action: "listFolder", folderId }                  -> フォルダ内の画像一覧
+//   { token, action: "getFileBase64", fileId }                 -> ファイルをbase64で取得
+//   { token, action: "uploadFile", folderId, fileName, base64, mimeType } -> アップロード
 //   旧Yoom互換: action未指定 + fileId/fileName/fileUrl があれば従来の追記を実行
 //
 // セキュリティ:
@@ -23,6 +28,11 @@
 
 const SPREADSHEET_ID = '1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s';
 const DEFAULT_SHEET = '投稿管理';
+
+// 生死確認用。ブラウザでURLを開くと {ok:true,status:"alive"} が返る。
+function doGet(e) {
+  return json_({ ok: true, status: 'alive' });
+}
 
 function doPost(e) {
   try {
@@ -42,6 +52,14 @@ function doPost(e) {
         return json_(updateRow_(req.sheet || DEFAULT_SHEET, req.keyColumn, req.keyValue, req.updates || {}));
       case 'ensureSheet':
         return json_(ensureSheet_(req.sheet, req.headers || []));
+      case 'setupSheet':
+        return json_(setupSheet_());
+      case 'listFolder':
+        return json_({ ok: true, files: listFolder_(req.folderId) });
+      case 'getFileBase64':
+        return json_({ ok: true, base64: getFileBase64_(req.fileId), mimeType: getFileMimeType_(req.fileId) });
+      case 'uploadFile':
+        return json_(uploadFile_(req.folderId, req.fileName, req.base64, req.mimeType || 'image/png'));
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -149,6 +167,67 @@ function ensureSheet_(sheetName, headers) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
   return { ok: true, status: 'created', sheet: sheetName, headers: headers };
+}
+
+// --- セットアップ ---
+
+function setupSheet_() {
+  var sheet = getSheet_(DEFAULT_SHEET);
+  var headers = getHeaders_(sheet);
+  var added = [];
+  var required = ['背景透過画像URL'];
+  required.forEach(function(col) {
+    if (headers.indexOf(col) < 0) {
+      sheet.getRange(1, headers.length + 1).setValue(col);
+      headers.push(col);
+      added.push(col);
+    }
+  });
+  return { ok: true, added: added, message: added.length > 0 ? '列を追加しました: ' + added.join(', ') : '列は既に存在します' };
+}
+
+// --- Drive 操作 ---
+
+function listFolder_(folderId) {
+  if (!folderId) throw new Error('folderIdが必要です。');
+  var folder = DriveApp.getFolderById(folderId);
+  var files = folder.getFiles();
+  var result = [];
+  while (files.hasNext()) {
+    var file = files.next();
+    var mime = file.getMimeType();
+    if (mime.indexOf('image/') === 0) {
+      result.push({
+        id: file.getId(),
+        name: file.getName(),
+        mimeType: mime,
+        url: file.getUrl(),
+        size: file.getSize(),
+      });
+    }
+  }
+  return result;
+}
+
+function getFileBase64_(fileId) {
+  if (!fileId) throw new Error('fileIdが必要です。');
+  var bytes = DriveApp.getFileById(fileId).getBlob().getBytes();
+  return Utilities.base64Encode(bytes);
+}
+
+function getFileMimeType_(fileId) {
+  if (!fileId) throw new Error('fileIdが必要です。');
+  return DriveApp.getFileById(fileId).getMimeType();
+}
+
+function uploadFile_(folderId, fileName, base64, mimeType) {
+  if (!folderId || !fileName || !base64) throw new Error('folderId/fileName/base64 が必要です。');
+  var bytes = Utilities.base64Decode(base64);
+  var blob = Utilities.newBlob(bytes, mimeType, fileName);
+  var folder = DriveApp.getFolderById(folderId);
+  var file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return { ok: true, fileId: file.getId(), url: file.getUrl(), name: file.getName() };
 }
 
 function createManagementId_(now) {
