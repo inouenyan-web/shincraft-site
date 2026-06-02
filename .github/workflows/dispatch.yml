@@ -1,0 +1,30 @@
+name: スマホから指示（Claude Code Dispatch）
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Claudeへの指示（日本語OK）'
+        required: true
+        type: string
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Claude Code を実行
+        uses: anthropics/claude-code-action@beta
+        with:
+          prompt: ${{ inputs.prompt }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
