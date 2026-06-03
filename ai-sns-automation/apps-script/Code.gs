@@ -1,13 +1,18 @@
 // ShinCRAFT SNS自動投稿 — Apps Script JSON API
 // =====================================================================
-// 役割: Claude Codeなどの外部スクリプトから、投稿管理台帳(Google Sheets)を
-//       読み書きするための薄いJSON API. サービスアカウント不要.
+// 役割: Claude Codeなどの外部スクリプトから、投稿管理台帳(Google Sheets)と
+//       Driveファイルを読み書きするための薄いJSON API. サービスアカウント不要.
 //
 // 対応アクション(POST body):
 //   { token, action: "list",   sheet }                         -> 全行をオブジェクト配列で返す
 //   { token, action: "append", sheet, values:{列名:値,...} }     -> 1行追加
 //   { token, action: "update", sheet, keyColumn, keyValue,
 //            updates:{列名:値,...} }                            -> 該当行の指定列を更新
+//   { token, action: "ensureSheet", sheet, headers:[...] }      -> シートが無ければ作成
+//   { token, action: "setupSheet" }                            -> 必須列を補完
+//   { token, action: "listFolder", folderId }                  -> フォルダ内の画像一覧
+//   { token, action: "getFileBase64", fileId }                 -> ファイルをbase64で取得
+//   { token, action: "uploadFile", folderId, fileName, base64, mimeType } -> アップロード
 //   旧Yoom互換: action未指定 + fileId/fileName/fileUrl があれば従来の追記を実行
 //
 // セキュリティ:
@@ -23,6 +28,11 @@
 
 const SPREADSHEET_ID = '1j8R23sZZfF1h7X1X87EyS1f9KxHkYBPr0ZSbRNxK16s';
 const DEFAULT_SHEET = '投稿管理';
+
+// 生死確認用。ブラウザでURLを開くと {ok:true,status:"alive"} が返る。
+function doGet(e) {
+  return json_({ ok: true, status: 'alive' });
+}
 
 function doPost(e) {
   try {
@@ -40,6 +50,8 @@ function doPost(e) {
         return json_(appendRow_(req.sheet || DEFAULT_SHEET, req.values || legacyValues_(req)));
       case 'update':
         return json_(updateRow_(req.sheet || DEFAULT_SHEET, req.keyColumn, req.keyValue, req.updates || {}));
+      case 'ensureSheet':
+        return json_(ensureSheet_(req.sheet, req.headers || []));
       case 'setupSheet':
         return json_(setupSheet_());
       case 'listFolder':
@@ -140,6 +152,21 @@ function updateRow_(sheetName, keyColumn, keyValue, updates) {
     }
   }
   throw new Error('該当行が見つかりません: ' + keyColumn + '=' + keyValue);
+}
+
+// シートが無ければヘッダー付きで作成する。あれば何もしない（冪等）。
+function ensureSheet_(sheetName, headers) {
+  if (!sheetName) throw new Error('sheetが必要です。');
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName(sheetName);
+  if (sheet) {
+    return { ok: true, status: 'exists', sheet: sheetName };
+  }
+  sheet = ss.insertSheet(sheetName);
+  if (headers && headers.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  return { ok: true, status: 'created', sheet: sheetName, headers: headers };
 }
 
 // --- セットアップ ---
