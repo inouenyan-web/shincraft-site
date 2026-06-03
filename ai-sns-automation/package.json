@@ -13,6 +13,7 @@
     "ledger:list": "node scripts/ledger.mjs list",
     "publish": "node scripts/publish_approved.mjs",
     "publish:instagram": "node scripts/post_to_buffer.mjs",
+    "check:instagram": "node scripts/check_instagram.mjs",
     "bg-remove": "node scripts/batch_bg_remove.mjs",
     "bg-remove:dry": "node scripts/batch_bg_remove.mjs --dry-run"
   },
