@@ -151,5 +151,33 @@ node scripts/check_instagram.mjs                  # Instagramの投稿/コメン
 cd ai-sns-automation && node scripts/check_instagram.mjs
 ```
 
-> ⚠️ **長期トークンも60日で失効する。** 失効したら手順3・5を再実行して更新する。
-> 恒久運用するなら Meta の「システムユーザー」トークンで無期限化も可能。
+> ⚠️ 長期トークンは60日で失効するが、下記 **9章の自動更新** を設定すれば手動再取得は不要。
+
+---
+
+## 9. Instagramトークンの自動更新（推奨・手動再取得を不要にする）
+
+`.github/workflows/instagram-token-refresh.yml` が **毎月1日・15日** に長期トークンを
+再交換し、GitHub Secret `META_ACCESS_TOKEN` を自動で書き換える。長期トークンは有効なうちに
+再交換すると新しい60日トークンになるため、この定期実行が回り続ける限り**失効しない**。
+
+### 9-1. 追加で必要なSecret（リポジトリ Settings→Secrets and variables→Actions）
+| Secret名 | 値 | 取得元 |
+|---|---|---|
+| `FB_APP_ID` | Metaアプリ ID | Meta for Developers → アプリ「設定→ベーシック」 |
+| `FB_APP_SECRET` | Metaアプリ シークレット | 同上（「表示」で確認） |
+| `GH_PAT` | Actions Secretを更新できるGitHub PAT | 下記9-2 |
+
+（`META_ACCESS_TOKEN` と `IG_USER_ID` は8章で登録済みのものを使う）
+
+### 9-2. GH_PAT（GitHub Personal Access Token）の作り方
+GitHub Secretは標準の `GITHUB_TOKEN` では書き換えできないため、専用PATが要る。
+1. GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token
+2. Repository access: `inouenyan-web/shincraft-site` のみに限定
+3. Permissions → Repository permissions → **Secrets: Read and write** を付与
+4. 有効期限は最長（1年）に設定。発行された `github_pat_...` を `GH_PAT` に登録。
+   ※PATは最長1年で失効するため、年1回だけ再発行が必要（トークンの60日ごとより大幅に楽）。
+
+### 9-3. 動作確認
+Actionsタブ →「Instagramトークン自動更新」→ Run workflow。
+ログに「✅ GitHub Secret『META_ACCESS_TOKEN』を更新しました」が出れば成功。

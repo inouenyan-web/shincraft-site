@@ -28,7 +28,7 @@ jobs:
           key: imgly-bg-removal-models-v1
 
       - name: 依存パッケージをインストール
-        run: npm ci
+        run: npm install
         working-directory: ai-sns-automation
 
       - name: 背景透過バッチ実行
