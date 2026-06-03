@@ -56,6 +56,7 @@ Claude Code に指示を出すだけ** で回ることを目指します。
 | ⑥承認 | **人間（井上さん）** | Sheetsで内容確認し `ステータス=承認` に変更（スマホ可） |
 | ⑦X投稿 | Claude Code + X API | `承認` 行をXへ投稿し `X投稿URL`/`ステータス=投稿済み` を台帳へ |
 | ⑧Instagram投稿 | Claude Code + Buffer API | `承認` 行をBufferへ送り Instagram に投稿（`Buffer投稿ID`/`ステータス=投稿予約済み`） |
+| ⑨チェック | Claude Code + Instagram Graph API | 投稿後のエンゲージメント・コメント（返信漏れ）を自動取得。`check_instagram.mjs`（読取専用・DMは対象外） |
 
 ### 実行コマンド（Claude Codeが端末で実行）
 ```bash
@@ -67,6 +68,7 @@ node scripts/post_to_buffer.mjs --dry-run                 # 承認済みInstagra
 node scripts/post_to_buffer.mjs                           # Instagram（Buffer経由）を実行
 node scripts/note_to_x.mjs --dry-run                      # note→X 対象確認
 node scripts/note_to_x.mjs                                # note→X 実投稿
+node scripts/check_instagram.mjs                          # Instagramの投稿/コメントをチェック（読取専用）
 ```
 
 ---
