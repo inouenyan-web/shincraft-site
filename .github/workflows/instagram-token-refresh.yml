@@ -1,12 +1,12 @@
-name: Instagramチェック（毎朝）
+name: Instagramトークン自動更新（月2回）
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # 毎日UTC 0:00 = 日本時間 朝9:00
-  workflow_dispatch:        # GitHubのActionsタブから手動実行も可能
+    - cron: '0 0 1,15 * *'   # 毎月1日・15日 UTC0時。60日トークンを最大15日間隔で延長＝失効させない
+  workflow_dispatch:          # 手動実行も可能
 
 jobs:
-  check:
+  refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -25,13 +25,11 @@ jobs:
         run: npm install
         working-directory: ai-sns-automation
 
-      - name: Instagramチェック実行（結果をサマリに出力）
+      - name: 長期トークンを延長してSecretを更新
         working-directory: ai-sns-automation
         env:
-          IG_USER_ID: ${{ secrets.IG_USER_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-        run: |
-          echo '## @shincraft2023 チェック結果' >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/check_instagram.mjs | tee -a "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: node scripts/refresh_token.mjs
