@@ -15,9 +15,9 @@
 | `NOTE_X_TEMPLATE` | （任意）note→X 投稿文。`{title}` `{link}` を置換 | 任意 |
 | `GAS_WEBAPP_URL` | 台帳API（Apps Script WebアプリURL） | Apps Scriptのデプロイ |
 | `GAS_SHARED_TOKEN` | 台帳API認証トークン | 任意の長い乱数。下記参照 |
+| `BUFFER_ACCESS_TOKEN` | Instagram投稿（Buffer Publish API） | Buffer → Settings → Access Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Buffer上のInstagramプロファイルID | Buffer API `/profiles.json` で確認 |
 | `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | 任意 |
-
-> Instagram自動投稿（Graph API）は当面使わないため不要。使う段階で別途追記する。
 
 ## 2. ネットワーク許可ホスト（重要）
 
