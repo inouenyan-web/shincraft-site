@@ -1,19 +1,26 @@
-// ShinCRAFT_photoroom フォルダ内の画像を一括で背景透過する一回限りスクリプト。
-// 台帳を介さず、指定フォルダの画像をすべて処理して 02_背景透過済み へ保存する。
-// APIキー不要（@imgly/background-removal-node）。バイナリはGAS経由で完結（コンテキスト非依存）。
+// 指定フォルダ内の画像を一括で背景透過するスクリプト。
+// ダウンロード・アップロードは GAS Web App 経由でサーバー側処理（トークン上限の影響なし）。
+// 背景透過は @imgly/background-removal-node でローカル実行。
 //
 // 使い方:
 //   node scripts/process_photoroom.mjs [--dry-run]
 //
 // 必要env: GAS_WEBAPP_URL, GAS_SHARED_TOKEN
-// 前提: Apps Script Web アプリが listFolder / getFileBase64 / uploadFile に対応していること
+// 前提: GAS側に listFolder / getFileBase64 / uploadFile アクションが必要（apps-script/Code.gs）
 
-import { removeBg } from "./bg_remove.mjs";
+import { removeBackground } from "@imgly/background-removal-node";
 import { callGas } from "./lib/ledger.mjs";
 
 const SRC_FOLDER_ID = "1vpJbqdCtwvvNIPDO09BAiml7_Q_4qs6c"; // ShinCRAFT_photoroom
 const DEST_FOLDER_ID = "1kOBaGvnlmONg1t0eNFyIsdUZ4oeZPXOm"; // 02_背景透過済み
 const dryRun = process.argv.includes("--dry-run");
+
+async function removeBg(inputBuffer, mimeType) {
+  const blob = new Blob([inputBuffer], { type: mimeType || "image/jpeg" });
+  const result = await removeBackground(blob);
+  const arrayBuffer = await result.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
 
 async function main() {
   const list = await callGas({ action: "listFolder", folderId: SRC_FOLDER_ID });
@@ -28,13 +35,14 @@ async function main() {
   const results = [];
   for (const f of files) {
     if (dryRun) {
+      console.log(`[dry-run] ${f.name}`);
       results.push({ name: f.name, id: f.id, dryRun: true });
       continue;
     }
     try {
       const dl = await callGas({ action: "getFileBase64", fileId: f.id });
       const inputBuffer = Buffer.from(dl.base64, "base64");
-      const outputBuffer = await removeBg(inputBuffer);
+      const outputBuffer = await removeBg(inputBuffer, dl.mimeType || f.mimeType);
       const outName = f.name.replace(/(\.[^.]+)?$/, "_nobg.png");
       const up = await callGas({
         action: "uploadFile",
