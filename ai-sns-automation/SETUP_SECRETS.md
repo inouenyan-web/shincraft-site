@@ -77,6 +77,8 @@ GitHub Actions で1時間ごとの自動処理を動かすには、GitHub リポ
 | `GAS_WEBAPP_URL` | Apps Script Web アプリのURL |
 | `GAS_SHARED_TOKEN` | 台帳API認証トークン |
 | `DRIVE_NOBG_FOLDER_ID` | `02_背景透過済み` フォルダのID |
+| `IG_USER_ID` | Instagramチェック用（`instagram-check.yml` が参照） |
+| `META_ACCESS_TOKEN` | Instagramチェック用 長期トークン（同上） |
 
 登録後、GitHub の **Actions タブ > 背景透過バッチ > Run workflow** で手動テスト実行できる。
 
