@@ -60,6 +60,10 @@ function doPost(e) {
         return json_({ ok: true, base64: getFileBase64_(req.fileId), mimeType: getFileMimeType_(req.fileId) });
       case 'uploadFile':
         return json_(uploadFile_(req.folderId, req.fileName, req.base64, req.mimeType || 'image/png'));
+      case 'setConfig':
+        return json_(setConfigProp_(req.key, req.value));
+      case 'getConfig':
+        return json_(getConfigProp_(req.key));
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -228,6 +232,19 @@ function uploadFile_(folderId, fileName, base64, mimeType) {
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return { ok: true, fileId: file.getId(), url: file.getUrl(), name: file.getName() };
+}
+
+function setConfigProp_(key, value) {
+  if (!key) throw new Error('keyが必要です。');
+  PropertiesService.getScriptProperties().setProperty('CONF_' + key, String(value || ''));
+  return { ok: true };
+}
+
+function getConfigProp_(key) {
+  if (!key) throw new Error('keyが必要です。');
+  var val = PropertiesService.getScriptProperties().getProperty('CONF_' + key);
+  if (val === null) throw new Error('設定が見つかりません: ' + key);
+  return { ok: true, value: val };
 }
 
 function createManagementId_(now) {
