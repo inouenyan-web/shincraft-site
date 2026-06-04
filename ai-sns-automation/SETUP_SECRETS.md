@@ -5,19 +5,29 @@
 
 ## 1. 登録する環境変数
 
-| 変数名 | 用途 | 取得元 |
-|---|---|---|
-| `X_API_KEY` | X投稿（OAuth1.0a App Key） | X Developer Portal |
-| `X_API_SECRET` | X投稿（App Secret） | 同上 |
-| `X_ACCESS_TOKEN` | X投稿（ユーザーAccess Token） | 同上 |
-| `X_ACCESS_SECRET` | X投稿（Access Token Secret） | 同上 |
-| `NOTE_USERNAME` | `note.com/<ここ>/rss` のユーザー名 | noteのプロフィールURL |
-| `NOTE_X_TEMPLATE` | （任意）note→X 投稿文。`{title}` `{link}` を置換 | 任意 |
-| `GAS_WEBAPP_URL` | 台帳API（Apps Script WebアプリURL） | Apps Scriptのデプロイ |
-| `GAS_SHARED_TOKEN` | 台帳API認証トークン | 任意の長い乱数。下記参照 |
-| `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | 任意 |
+> **登録先の違い（重要）**
+> - **Claude Code 環境変数**：セッション実行時（`/sns` 等）に使う変数。Claude Code Webの「環境変数」設定から登録。
+> - **GitHub Secrets**：GitHub Actions（毎朝チェック等）で使う変数。リポジトリ Settings → Secrets → Actions から登録。
+> - ★ LINE_CHANNEL_ACCESS_TOKEN は Claude Code 環境変数のみ。GitHub Secretsには不要。
+> - ★ META_ACCESS_TOKEN は GitHub Secrets にも登録が必要（8章参照）。
 
-> Instagram自動投稿（Graph API）は当面使わないため不要。使う段階で別途追記する。
+| 変数名 | 用途 | 登録先 | 取得元 |
+|---|---|---|---|
+| `X_API_KEY` | X投稿（OAuth1.0a App Key） | Claude Code | X Developer Portal |
+| `X_API_SECRET` | X投稿（App Secret） | Claude Code | 同上 |
+| `X_ACCESS_TOKEN` | X投稿（ユーザーAccess Token） | Claude Code | 同上 |
+| `X_ACCESS_SECRET` | X投稿（Access Token Secret） | Claude Code | 同上 |
+| `NOTE_USERNAME` | `note.com/<ここ>/rss` のユーザー名 | Claude Code | noteのプロフィールURL |
+| `NOTE_X_TEMPLATE` | （任意）note→X 投稿文。`{title}` `{link}` を置換 | Claude Code | 任意 |
+| `GAS_WEBAPP_URL` | 台帳API（Apps Script WebアプリURL） | Claude Code | Apps Scriptのデプロイ |
+| `GAS_SHARED_TOKEN` | 台帳API認証トークン | Claude Code | 任意の長い乱数。下記参照 |
+| `BUFFER_ACCESS_TOKEN` | Instagram投稿（Buffer Publish API） | Claude Code | Buffer → Settings → Access Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Buffer上のInstagramプロファイルID | Claude Code | Buffer API `/profiles.json` で確認 |
+| `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | Claude Code | 任意 |
+| `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Claude Code | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
+| `IG_USER_ID` | Instagramチェック（投稿・コメント取得） | **両方** | Instagram Business Account ID（下記8章） |
+| `META_ACCESS_TOKEN` | Instagramチェック（Graph API長期トークン・**EAA形式**） | **両方** | Meta for Developers（下記8章） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿（任意） | **Claude Codeのみ** | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
 
 ## 2. ネットワーク許可ホスト（重要）
 
