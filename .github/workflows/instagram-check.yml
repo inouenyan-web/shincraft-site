@@ -9,6 +9,8 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write       # daily_report.md をコミットするために必要
 
     steps:
       - name: リポジトリをチェックアウト
@@ -25,13 +27,28 @@ jobs:
         run: npm install
         working-directory: ai-sns-automation
 
-      - name: Instagramチェック実行（結果をサマリに出力）
+      - name: Instagramチェック実行（結果をサマリ・daily_report.md に出力）
         working-directory: ai-sns-automation
         env:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
         run: |
+          DATE=$(TZ='Asia/Tokyo' date '+%Y-%m-%d %H:%M JST')
+          RESULT=$(node scripts/check_instagram.mjs 2>&1 || echo "（Secrets未設定 - GitHub Settings→Secrets→Actions に登録後に有効になります）")
+
+          # GitHub Actions サマリに出力
           echo '## @shincraft2023 チェック結果' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/check_instagram.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "$RESULT" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          # daily_report.md に保存（セッション開始時ブリーフィングが読み込む）
+          printf '最終更新: %s\n\n%s\n' "$DATE" "$RESULT" > "$GITHUB_WORKSPACE/daily_report.md"
+
+      - name: daily_report.md をコミット・プッシュ
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add daily_report.md
+          git diff --staged --quiet || git commit -m "daily_report: $(TZ='Asia/Tokyo' date '+%Y-%m-%d') 自動更新 [skip ci]"
+          git push

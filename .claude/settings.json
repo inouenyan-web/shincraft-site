@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/ledger-status.sh",
-            "timeout": 60,
-            "statusMessage": "台帳を確認中..."
+            "command": "bash .claude/hooks/morning_briefing.sh",
+            "timeout": 90,
+            "statusMessage": "今日のブリーフィングを準備中..."
           }
         ]
       }
