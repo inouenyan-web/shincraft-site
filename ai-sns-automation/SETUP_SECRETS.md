@@ -21,6 +21,7 @@
 | `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
 | `IG_USER_ID` | Instagramチェック（投稿・コメント取得） | Instagram Business Account ID（下記8章） |
 | `META_ACCESS_TOKEN` | Instagramチェック（Graph API長期トークン） | Meta for Developers（下記8章） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿（任意） | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -181,3 +182,30 @@ GitHub Secretは標準の `GITHUB_TOKEN` では書き換えできないため、
 ### 9-3. 動作確認
 Actionsタブ →「Instagramトークン自動更新」→ Run workflow。
 ログに「✅ GitHub Secret『META_ACCESS_TOKEN』を更新しました」が出れば成功。
+
+---
+
+## 10. LINE公式アカウント連動（任意・Instagram投稿と同時配信）
+
+`post_to_buffer.mjs` でInstagramに投稿する際、`LINE_CHANNEL_ACCESS_TOKEN` が設定されていれば
+**LINE公式アカウントの全フォロワーにも同じ内容を自動ブロードキャスト**する。
+設定しなければ何も起きない（スキップ）。
+
+### 10-1. トークン取得手順
+1. [LINE Developers](https://developers.line.biz/ja/) にアクセス → プロバイダー選択 or 新規作成。
+2. **Messaging API チャンネル**を作成（または既存のチャンネルを選択）。
+3. チャンネル設定 →「Messaging API設定」タブ →「チャンネルアクセストークン（長期）」を発行。
+4. 発行されたトークンを `LINE_CHANNEL_ACCESS_TOKEN` として Claude Code 環境変数に登録。
+
+### 10-2. 動作確認
+```bash
+cd ai-sns-automation
+LINE_CHANNEL_ACCESS_TOKEN=your_token node scripts/post_to_buffer.mjs --dry-run
+# → LINE: （本文プレビュー）が表示されれば連動設定OK
+```
+
+### 10-3. LINE本文の整形ルール
+- Instagram本文からハッシュタグ行を除去して送信（LINEではハッシュタグ不要）
+- 最大5000文字（LINE制限）。通常の投稿は収まる。
+- 画像はLINEブロードキャストでは添付しない（テキストのみ）。
+  画像を添付したい場合は Line Messaging API の `image` メッセージ型に対応が必要（要追加実装）。
