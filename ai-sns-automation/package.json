@@ -12,11 +12,17 @@
     "note:x": "node scripts/note_to_x.mjs",
     "ledger:list": "node scripts/ledger.mjs list",
     "publish": "node scripts/publish_approved.mjs",
+    "publish:instagram": "node scripts/post_to_buffer.mjs",
+    "check:instagram": "node scripts/check_instagram.mjs",
+    "token:refresh": "node scripts/refresh_token.mjs",
+    "bg-remove": "node scripts/batch_bg_remove.mjs",
+    "bg-remove:dry": "node scripts/batch_bg_remove.mjs --dry-run",
     "sync-bridge": "node scripts/sync_bridge.mjs"
   },
   "dependencies": {
     "@imgly/background-removal-node": "^1.4.5",
     "googleapis": "^173.0.0",
+    "libsodium-wrappers": "^0.8.4",
     "rss-parser": "^3.13.0",
     "twitter-api-v2": "^1.18.0"
   }

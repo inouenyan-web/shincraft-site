@@ -7,8 +7,8 @@
 
 > **登録先の違い（重要）**
 > - **Claude Code 環境変数**：セッション実行時（`/sns` 等）に使う変数。Claude Code Webの「環境変数」設定から登録。
-> - **GitHub Secrets**：GitHub Actions（毎朝チェック等）で使う変数。リポジトリ Settings → Secrets → Actions から登録。
-> - ★ LINE_CHANNEL_ACCESS_TOKEN は Claude Code 環境変数のみ。GitHub Secretsには不要。
+> - **GitHub Secrets**：GitHub Actions（毎朝チェック・IG→LINEミラー等）で使う変数。リポジトリ Settings → Secrets → Actions から登録。
+> - ★ LINE_CHANNEL_ACCESS_TOKEN は `/sns` 用に Claude Code 環境変数へ。IG→LINE自動ミラー（Actions）用に GitHub Secrets にも登録（両方）。
 > - ★ META_ACCESS_TOKEN は GitHub Secrets にも登録が必要（8章参照）。
 
 | 変数名 | 用途 | 登録先 | 取得元 |
@@ -25,9 +25,9 @@
 | `BUFFER_INSTAGRAM_PROFILE_ID` | Buffer上のInstagramプロファイルID | Claude Code | Buffer API `/profiles.json` で確認 |
 | `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | Claude Code | 任意 |
 | `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Claude Code | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
-| `IG_USER_ID` | Instagramチェック（投稿・コメント取得） | **両方** | Instagram Business Account ID（下記8章） |
-| `META_ACCESS_TOKEN` | Instagramチェック（Graph API長期トークン・**EAA形式**） | **両方** | Meta for Developers（下記8章） |
-| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿（任意） | **Claude Codeのみ** | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
+| `IG_USER_ID` | Instagramチェック・IG→LINEミラー（投稿取得） | **両方** | Instagram Business Account ID（下記8章） |
+| `META_ACCESS_TOKEN` | Instagramチェック・IG→LINEミラー（Graph API長期トークン・**EAA形式**） | **両方** | Meta for Developers（下記8章） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿 | **両方** | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -110,7 +110,108 @@ node scripts/process_photoroom.mjs             # 実処理（背景透過してD
 
 ```bash
 cd ai-sns-automation && npm install
-node scripts/ledger.mjs list            # 台帳が読めるか
-node scripts/note_to_x.mjs --dry-run    # note新着が拾えるか
-node scripts/publish_approved.mjs --dry-run   # 承認行の投稿内容
+node scripts/ledger.mjs list                      # 台帳が読めるか
+node scripts/note_to_x.mjs --dry-run              # note新着が拾えるか
+node scripts/publish_approved.mjs --dry-run       # 承認行のX投稿内容確認
+node scripts/post_to_buffer.mjs --dry-run         # 承認行のInstagram投稿内容確認
+node scripts/check_instagram.mjs                  # Instagramの投稿/コメントが取れるか
 ```
+
+---
+
+## 8. Instagram Graph API（チェック用・読み取り専用）
+
+`node scripts/check_instagram.mjs` で @shincraft2023 の **投稿一覧・いいね/コメント数・
+コメント本文（返信漏れ検出）・フォロワー数** を自動取得するために必要。
+**DM受信箱は Graph API の対象外**（Messenger Platform の別審査が必要）。
+未設定でも自動でChrome版Claude用プロンプトにフォールバックするため、運用は止まらない。
+
+**前提**：Instagram を **Business または Creator** アカウントにし、Facebookページと連携しておく。
+
+### 8-1. トークン取得手順
+1. [Meta for Developers](https://developers.facebook.com) でアプリを作成（タイプ: ビジネス）。
+2. アプリに製品 **「Instagram Graph API」** を追加。
+3. **Graph API Explorer** で次の権限を付けたトークンを発行：
+   `instagram_basic`, `instagram_manage_insights`, `pages_show_list`, `pages_read_engagement`
+4. **IG_USER_ID** を取得：
+   - `GET /me/accounts` → 対象Facebookページの `id` を控える
+   - `GET /{page-id}?fields=instagram_business_account` → `instagram_business_account.id` が `IG_USER_ID`
+5. **長期トークン**へ変換（短期トークンは1〜2時間で失効）：
+   - `GET /oauth/access_token?grant_type=fb_exchange_token&client_id=APP_ID&client_secret=APP_SECRET&fb_exchange_token=短期トークン`
+   - 返ってきた60日有効トークンを `META_ACCESS_TOKEN` に設定。
+
+### 8-2. 環境変数を登録
+| 変数名 | 値 |
+|---|---|
+| `IG_USER_ID` | 手順4で取得した数値ID |
+| `META_ACCESS_TOKEN` | 手順5で取得した長期トークン |
+
+> GitHub Actions（`.github/workflows/instagram-check.yml`）で毎朝自動実行する場合は、
+> リポジトリの **Settings→Secrets and variables→Actions** にも同じ2つを登録する。
+> Web実行環境はネット制限で `graph.facebook.com` に到達できないため、定期チェックはActions側で回す。
+
+### 8-3. ネットワーク許可ホスト追加
+`graph.facebook.com` … Instagram Graph API
+
+### 8-4. 動作確認
+```bash
+cd ai-sns-automation && node scripts/check_instagram.mjs
+```
+
+> ⚠️ 長期トークンは60日で失効するが、下記 **9章の自動更新** を設定すれば手動再取得は不要。
+
+---
+
+## 9. Instagramトークンの自動更新（推奨・手動再取得を不要にする）
+
+`.github/workflows/instagram-token-refresh.yml` が **毎月1日・15日** に長期トークンを
+再交換し、GitHub Secret `META_ACCESS_TOKEN` を自動で書き換える。長期トークンは有効なうちに
+再交換すると新しい60日トークンになるため、この定期実行が回り続ける限り**失効しない**。
+
+### 9-1. 追加で必要なSecret（リポジトリ Settings→Secrets and variables→Actions）
+| Secret名 | 値 | 取得元 |
+|---|---|---|
+| `FB_APP_ID` | Metaアプリ ID | Meta for Developers → アプリ「設定→ベーシック」 |
+| `FB_APP_SECRET` | Metaアプリ シークレット | 同上（「表示」で確認） |
+| `GH_PAT` | Actions Secretを更新できるGitHub PAT | 下記9-2 |
+
+（`META_ACCESS_TOKEN` と `IG_USER_ID` は8章で登録済みのものを使う）
+
+### 9-2. GH_PAT（GitHub Personal Access Token）の作り方
+GitHub Secretは標準の `GITHUB_TOKEN` では書き換えできないため、専用PATが要る。
+1. GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token
+2. Repository access: `inouenyan-web/shincraft-site` のみに限定
+3. Permissions → Repository permissions → **Secrets: Read and write** を付与
+4. 有効期限は最長（1年）に設定。発行された `github_pat_...` を `GH_PAT` に登録。
+   ※PATは最長1年で失効するため、年1回だけ再発行が必要（トークンの60日ごとより大幅に楽）。
+
+### 9-3. 動作確認
+Actionsタブ →「Instagramトークン自動更新」→ Run workflow。
+ログに「✅ GitHub Secret『META_ACCESS_TOKEN』を更新しました」が出れば成功。
+
+---
+
+## 10. LINE公式アカウント連動（任意・Instagram投稿と同時配信）
+
+`post_to_buffer.mjs` でInstagramに投稿する際、`LINE_CHANNEL_ACCESS_TOKEN` が設定されていれば
+**LINE公式アカウントの全フォロワーにも同じ内容を自動ブロードキャスト**する。
+設定しなければ何も起きない（スキップ）。
+
+### 10-1. トークン取得手順
+1. [LINE Developers](https://developers.line.biz/ja/) にアクセス → プロバイダー選択 or 新規作成。
+2. **Messaging API チャンネル**を作成（または既存のチャンネルを選択）。
+3. チャンネル設定 →「Messaging API設定」タブ →「チャンネルアクセストークン（長期）」を発行。
+4. 発行されたトークンを `LINE_CHANNEL_ACCESS_TOKEN` として Claude Code 環境変数に登録。
+
+### 10-2. 動作確認
+```bash
+cd ai-sns-automation
+LINE_CHANNEL_ACCESS_TOKEN=your_token node scripts/post_to_buffer.mjs --dry-run
+# → LINE: （本文プレビュー）が表示されれば連動設定OK
+```
+
+### 10-3. LINE本文の整形ルール
+- Instagram本文からハッシュタグ行を除去して送信（LINEではハッシュタグ不要）
+- 最大5000文字（LINE制限）。通常の投稿は収まる。
+- 画像はLINEブロードキャストでは添付しない（テキストのみ）。
+  画像を添付したい場合は Line Messaging API の `image` メッセージ型に対応が必要（要追加実装）。
