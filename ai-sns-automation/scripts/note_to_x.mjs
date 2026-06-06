@@ -10,11 +10,18 @@
 //   node scripts/note_to_x.mjs --dry-run  # 投稿せず対象だけ表示
 
 import Parser from "rss-parser";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { postTweet } from "./lib/x_client.mjs";
 import { callGas } from "./lib/ledger.mjs";
 import { requireEnv, optionalEnv } from "./lib/env.mjs";
 
 const NOTE_SHEET = "note連携";
+// GASの「note連携」シートが使えない環境向けのフォールバック兼・永続記録。
+// Gitにコミットすることで ephemeral コンテナを跨いで重複投稿を防ぐ。
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const LOCAL_RECORD = join(__dirname, "..", "data", "note_posted.json");
 const dryRun = process.argv.includes("--dry-run");
 
 // 投稿文テンプレート（環境変数で上書き可能）。{title} {link} を置換。
@@ -24,29 +31,49 @@ function buildText(item) {
   return template.replace("{title}", item.title || "").replace("{link}", item.link || "");
 }
 
-async function getPostedGuids() {
+async function readLocalRecords() {
   try {
-    const json = await callGas({ action: "list", sheet: NOTE_SHEET });
-    return new Set((json.rows || []).map((r) => String(r["guid"] || "")));
-  } catch (e) {
-    // シートが無い場合などは空集合として続行（初回）。
-    console.error("note連携シートの読み込みに失敗（初回なら無視可）: " + e.message);
-    return new Set();
+    const arr = JSON.parse(await readFile(LOCAL_RECORD, "utf8"));
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
   }
 }
 
+async function getPostedGuids() {
+  const posted = new Set();
+  // GASの「note連携」シート（使えれば）。
+  try {
+    const json = await callGas({ action: "list", sheet: NOTE_SHEET });
+    (json.rows || []).forEach((r) => posted.add(String(r["guid"] || "")));
+  } catch (e) {
+    // シートが無い場合などはローカル記録のみで続行する。
+    console.error("note連携シートの読み込みに失敗（ローカル記録で継続）: " + e.message);
+  }
+  // ローカルの永続記録もマージ。
+  (await readLocalRecords()).forEach((r) => posted.add(String(r.guid || "")));
+  return posted;
+}
+
 async function recordPosted(item, xUrl) {
-  await callGas({
-    action: "append",
-    sheet: NOTE_SHEET,
-    values: {
-      guid: item.guid || item.link,
-      title: item.title || "",
-      link: item.link || "",
-      postedAt: new Date().toISOString(),
-      xPostUrl: xUrl,
-    },
-  });
+  const record = {
+    guid: item.guid || item.link,
+    title: item.title || "",
+    link: item.link || "",
+    postedAt: new Date().toISOString(),
+    xPostUrl: xUrl,
+  };
+  // GASシートへ記録（使えれば）。失敗してもローカルに必ず残す。
+  try {
+    await callGas({ action: "append", sheet: NOTE_SHEET, values: record });
+  } catch (e) {
+    console.error("note連携シートへの記録に失敗（ローカルに保存）: " + e.message);
+  }
+  // ローカルの永続記録へ必ず追記。
+  const records = await readLocalRecords();
+  records.push(record);
+  await mkdir(dirname(LOCAL_RECORD), { recursive: true });
+  await writeFile(LOCAL_RECORD, JSON.stringify(records, null, 2) + "\n", "utf8");
 }
 
 async function main() {
