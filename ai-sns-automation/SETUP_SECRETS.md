@@ -215,3 +215,36 @@ LINE_CHANNEL_ACCESS_TOKEN=your_token node scripts/post_to_buffer.mjs --dry-run
 - 最大5000文字（LINE制限）。通常の投稿は収まる。
 - 画像はLINEブロードキャストでは添付しない（テキストのみ）。
   画像を添付したい場合は Line Messaging API の `image` メッセージ型に対応が必要（要追加実装）。
+
+---
+
+## 11. Instagram→LINE 自動ミラー（出店・イベント告知を自動配信）
+
+井上さんが **Instagramに出店・イベント告知を投稿すると、公式LINEへ自動でブロードキャスト** する。
+`/sns` を通さず、Instagramアプリから直接投稿したものも対象。GitHub Actions で30分おきにチェックする。
+実装：`scripts/mirror_instagram_to_line.mjs` ／ `.github/workflows/instagram-to-line.yml`。
+
+### 11-1. 仕組みと絞り込み
+- Instagram Graph API で最新投稿を取得 → 本文に **出店・イベント告知キーワード**
+  （出店／イベント／マルシェ／ポップアップ等）を含む投稿だけをLINEへ流す。
+- 日常の軽い投稿を全友だちに一斉送信しないための絞り込み（キーワードは
+  `mirror_instagram_to_line.mjs` の `EVENT_KEYWORDS` で調整可能）。
+- 配信済み投稿IDは `data/line_mirrored.json` に記録し、重複送信を防止（Actionsが自動コミット）。
+
+### 11-2. 必要な GitHub Secrets（リポジトリ Settings→Secrets→Actions）
+| Secret名 | 用途 |
+|---|---|
+| `IG_USER_ID` | 投稿取得（8章で登録済み） |
+| `META_ACCESS_TOKEN` | 投稿取得（**有効なEAA形式トークンが必要**・8章） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式へのブロードキャスト（10章） |
+
+> ⚠️ `META_ACCESS_TOKEN` が無効だと投稿検出ができず動かない。8章で有効なトークンを取得・登録すること。
+
+### 11-3. 初回の誤爆防止（重要）
+有効化した直後は、既存の過去投稿がまとめてLINEに流れないよう、まず一度 **seed** を実行する：
+- Actionsタブ →「Instagram→LINE自動ミラー」→ Run workflow → mode=`seed`
+- これで現在の最新投稿群を「配信済み」として記録だけする（送信しない）。
+- 以降は、新しく投稿された告知だけがLINEへ流れる。
+
+### 11-4. 動作確認
+- Run workflow → mode=`dry-run` で、LINEへ流す対象だけを送信せず確認できる。
