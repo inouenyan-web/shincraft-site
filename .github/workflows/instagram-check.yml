@@ -31,6 +31,7 @@ jobs:
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
         run: |
+          set -o pipefail
           echo '## @shincraft2023 チェック結果' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           node scripts/check_instagram.mjs | tee -a "$GITHUB_STEP_SUMMARY"
