@@ -1,1 +1,4 @@
-{"_comment":"秘書1 振り分け台帳（正本・git管理）。~/claude_sync/progress.json はここへのシンボリックリンク。GAS振り分け台帳シートへは syncToGas() で二重化（任意）。","tasks":[]}
+{
+  "_comment": "秘書1 振り分け台帳（正本・git管理）。~/claude_sync/progress.json はここへのシンボリックリンク。GAS振り分け台帳シートへは syncToGas() で二重化（任意）。",
+  "tasks": []
+}
