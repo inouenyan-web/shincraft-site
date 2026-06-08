@@ -22,7 +22,7 @@ jobs:
           cache-dependency-path: ai-sns-automation/package.json
 
       - name: 依存パッケージをインストール
-        run: npm install
+        run: npm install --onnxruntime-node-install-cuda=skip
         working-directory: ai-sns-automation
 
       - name: 長期トークンを延長してSecretを更新
