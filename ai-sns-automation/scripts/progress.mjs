@@ -11,23 +11,25 @@
 //   node scripts/progress.mjs update --id TASK-xxx --status 完了 --summary "完了メモ"
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { homedir } from 'os';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-const DB_PATH = join(homedir(), 'claude_sync', 'progress.json');
+// 正本はリポジトリ内（git管理＝GitHubで永続化）。
+// ~/claude_sync/progress.json は本ファイルへのシンボリックリンク（指示書の参照パスを満たす）。
+const DB_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'progress.json');
 const LANES = ['知財', '法務・紛争', '労務・行政', '営業・マーケ', '制作', '発信', '連携・同期'];
 const STATUSES = ['受付', '委譲', 'レビュー', '完了', 'キャンセル'];
 
 function load() {
   if (!existsSync(DB_PATH)) {
-    mkdirSync(join(homedir(), 'claude_sync'), { recursive: true });
+    mkdirSync(dirname(DB_PATH), { recursive: true });
     return { tasks: [] };
   }
   return JSON.parse(readFileSync(DB_PATH, 'utf8'));
 }
 
 function save(db) {
-  mkdirSync(join(homedir(), 'claude_sync'), { recursive: true });
+  mkdirSync(dirname(DB_PATH), { recursive: true });
   writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf8');
 }
 
