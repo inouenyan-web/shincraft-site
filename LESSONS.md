@@ -48,7 +48,10 @@
 - 「コワーク↔Chrome版の連動」は公式仕様（CoworkがWeb作業をChrome拡張へ委譲する）。
 - ログイン画面・CAPTCHA・機密値の入力はどの製品でも人間に残る（Anthropicポリシー）。
 - 24時間確実に動かしたい定期処理はGitHub Actions（コード担当）に置く。Coworkの定期実行はPC起動中のみ。
-- **AI間の連絡手段**：Driveの「AI報告受信箱」ドキュメント（AIフォルダ内）に各AIが追記し、コードが読む。
+- **AI間の連絡手段**：Driveの「AI報告受信箱」（ID: `1alE6ds2j-iGG-n_vG1wslVuZfo19q-z66ibJiLvd2_g`）に各AIが追記し、コードが読む。
+- **コワーク・チャットへの自動委譲**：Claude Codeセッション内は Drive MCP `create_file` でAIフォルダにタスクDocを直接作成。スクリプトからは GAS `appendToDoc` 経由で受信箱Docに追記。コワークは起動時に読んで実行 → 結果を書き戻す。詳細: `ai-sns-automation/COWORK_STARTUP_PROMPT.md` / `CHAT_BRIEFING_PROMPT.md`。
+- **GAS appendToDoc/readDoc**：Code.gs に追加済み（2026-06-12）。GAS再デプロイ1回で有効化できる。
+- **Cowork起動手順_最新 Doc**：Drive AIフォルダ内 ID `1kw3DtfJOaKv2KY-wqqCvdJHc-vUjKtuJ5poxEC14yQw`。コワーク起動時に必ず読む。最新タスクが記載されている。
 
 ### 指揮系統・部署構造（コードが陣頭指揮・社内部署＋外部AIすべて傘下）
 
