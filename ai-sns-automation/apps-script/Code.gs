@@ -13,6 +13,8 @@
 //   { token, action: "listFolder", folderId }                  -> フォルダ内の画像一覧
 //   { token, action: "getFileBase64", fileId }                 -> ファイルをbase64で取得
 //   { token, action: "uploadFile", folderId, fileName, base64, mimeType } -> アップロード
+//   { token, action: "appendToDoc", docId, content }            -> Googleドキュメント末尾に追記
+//   { token, action: "readDoc", docId }                         -> Googleドキュメント全文を取得
 //   旧Yoom互換: action未指定 + fileId/fileName/fileUrl があれば従来の追記を実行
 //
 // セキュリティ:
