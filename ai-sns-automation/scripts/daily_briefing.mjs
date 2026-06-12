@@ -1,6 +1,14 @@
-// 毎朝6時（JST）に LESSONS.md と 運用ボード.md を結合した共有ブリーフィングを
-// Google Drive（AI親フォルダ）へアップロードする。
-// 全AI（Chrome版Claude・コワーク・ChatGPT等）はDriveのこのファイルを読んで足並みを揃える。
+// 毎朝6時（JST）の「全AI報告会」資料を自動生成し、Google Drive（AI親フォルダ）へ配置する。
+// 参加者：Claude Code各セッション（コード）・Chrome版Claude（チャット）・コワーク・ChatGPT。
+//
+// 報告会の内容：
+//   ① 各班がいま何を担当しているか（運用ボードの進行中タスク・優先順位）
+//   ② 井上さんからどんな指摘を受けたか（LESSONS.md 全文）
+//   ③ 井上さんの考えの理解＝確立された行動原則（LESSONS.mdの行動原則）
+//
+// 各AIはセッション/会話の開始時にこのファイルを読むこと。
+// Chrome版・コワーク・ChatGPTへの指示プロンプトには必ず
+// 「まずDriveの『AI共有ブリーフィング_最新.md』を読め」を含める。
 //
 // 必要env: GAS_WEBAPP_URL, GAS_SHARED_TOKEN
 // 実行: node scripts/daily_briefing.mjs
@@ -21,16 +29,25 @@ const lessons = await readFile(resolve(REPO_ROOT, 'LESSONS.md'), 'utf8');
 const board = await readFile(resolve(REPO_ROOT, '運用ボード.md'), 'utf8');
 
 const briefing = [
-  `# AI共有ブリーフィング（${today} 6:00 自動生成）`,
+  `# 朝6時 全AI報告会（${today} 自動開催）`,
   '',
-  '> 全AI（Chrome版Claude・コワーク・ChatGPT・Claude Code各セッション）は',
-  '> 作業開始前にこのファイルを読み、指摘事項と現在の優先順位に従うこと。',
+  '> **参加者：コード（Claude Code各セッション）／チャット（Chrome版Claude）／コワーク／ChatGPT**',
+  '> 各AIは作業開始前にこの報告会資料を必ず読み、以下を自分の頭に同期すること：',
+  '> ① いま誰が何を担当しているか（下記・運用ボード）',
+  '> ② 井上さんからどんな指摘を受けたか（下記・LESSONS）',
+  '> ③ 井上さんの考え＝確立された行動原則（LESSONSの行動原則。違反したまま作業を始めない）',
+  '>',
+  '> **井上さんに同じ説明を二度させないことが、この報告会の存在理由である。**',
   '',
   '---',
+  '',
+  '## 第1部：井上さんからの指摘と行動原則（全員共通の学習）',
   '',
   lessons,
   '',
   '---',
+  '',
+  '## 第2部：現在の担当・優先順位・進行状況（運用ボード）',
   '',
   board,
 ].join('\n');
@@ -50,7 +67,7 @@ const res = await fetch(env.GAS_WEBAPP_URL, {
 
 const data = await res.json().catch(() => ({}));
 if (!res.ok || data.error) {
-  throw new Error(`ブリーフィングのアップロードに失敗: HTTP ${res.status} ${JSON.stringify(data)}`);
+  throw new Error(`報告会資料のアップロードに失敗: HTTP ${res.status} ${JSON.stringify(data)}`);
 }
-console.log(`✅ AI共有ブリーフィングをDriveへ配置しました（${today}）`);
+console.log(`✅ 朝6時 全AI報告会の資料をDriveへ配置しました（${today}）`);
 console.log(JSON.stringify(data));
