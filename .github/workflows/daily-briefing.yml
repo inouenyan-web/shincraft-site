@@ -5,6 +5,9 @@ on:
     - cron: '0 21 * * *'   # UTC 21:00 = 日本時間 朝6:00
   workflow_dispatch:        # 手動実行も可能
 
+permissions:
+  contents: write   # 報告会資料をコミットするため
+
 jobs:
   briefing:
     runs-on: ubuntu-latest
@@ -18,18 +21,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: ai-sns-automation/package.json
 
-      - name: 依存パッケージをインストール
-        run: npm install --onnxruntime-node-install-cuda=skip
+      - name: 報告会資料を生成
         working-directory: ai-sns-automation
-
-      - name: LESSONS.md＋運用ボードをDriveの共有ブリーフィングへ転送
-        working-directory: ai-sns-automation
-        env:
-          GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
-          GAS_SHARED_TOKEN: ${{ secrets.GAS_SHARED_TOKEN }}
         run: |
           set -o pipefail
           node scripts/daily_briefing.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 報告会資料をコミット
+        run: |
+          if [[ -n "$(git status --porcelain 'AI共有ブリーフィング_最新.md')" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add 'AI共有ブリーフィング_最新.md'
+            git commit -m "chore: 朝6時 全AI報告会資料を更新 [skip ci]"
+            git push
+          else
+            echo "変更なし（コミット不要）"
+          fi

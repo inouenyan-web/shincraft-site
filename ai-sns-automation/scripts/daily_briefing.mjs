@@ -1,28 +1,25 @@
-// 毎朝6時（JST）の「全AI報告会」資料を自動生成し、Google Drive（AI親フォルダ）へ配置する。
+// 毎朝6時（JST）の「全AI報告会」資料を自動生成し、リポジトリ直下の
+// AI共有ブリーフィング_最新.md として書き出す（ワークフローがコミットする）。
 // 参加者：Claude Code各セッション（コード）・Chrome版Claude（チャット）・コワーク・ChatGPT。
+//
+// 公開リポジトリのためURLを開くだけで全AIが読める：
+//   https://github.com/inouenyan-web/shincraft-site/blob/main/AI共有ブリーフィング_最新.md
 //
 // 報告会の内容：
 //   ① 各班がいま何を担当しているか（運用ボードの進行中タスク・優先順位）
 //   ② 井上さんからどんな指摘を受けたか（LESSONS.md 全文）
 //   ③ 井上さんの考えの理解＝確立された行動原則（LESSONS.mdの行動原則）
 //
-// 各AIはセッション/会話の開始時にこのファイルを読むこと。
-// Chrome版・コワーク・ChatGPTへの指示プロンプトには必ず
-// 「まずDriveの『AI共有ブリーフィング_最新.md』を読め」を含める。
-//
-// 必要env: GAS_WEBAPP_URL, GAS_SHARED_TOKEN
 // 実行: node scripts/daily_briefing.mjs
+// 環境変数は不要（GAS非依存・リポジトリ内で完結）
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { requireEnv } from './lib/env.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '../..');
-const AI_FOLDER_ID = '1Nl5ksVJuwEuDZgyb0jr9V6Os9YLzGBcj'; // AI親フォルダ（CLAUDE.md固定ID）
-
-const env = requireEnv(['GAS_WEBAPP_URL', 'GAS_SHARED_TOKEN']);
+const OUT_PATH = resolve(REPO_ROOT, 'AI共有ブリーフィング_最新.md');
 
 const today = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
 const lessons = await readFile(resolve(REPO_ROOT, 'LESSONS.md'), 'utf8');
@@ -52,22 +49,5 @@ const briefing = [
   board,
 ].join('\n');
 
-const res = await fetch(env.GAS_WEBAPP_URL, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    token: env.GAS_SHARED_TOKEN,
-    action: 'uploadFile',
-    folderId: AI_FOLDER_ID,
-    fileName: 'AI共有ブリーフィング_最新.md',
-    base64: Buffer.from(briefing, 'utf8').toString('base64'),
-    mimeType: 'text/markdown',
-  }),
-});
-
-const data = await res.json().catch(() => ({}));
-if (!res.ok || data.error) {
-  throw new Error(`報告会資料のアップロードに失敗: HTTP ${res.status} ${JSON.stringify(data)}`);
-}
-console.log(`✅ 朝6時 全AI報告会の資料をDriveへ配置しました（${today}）`);
-console.log(JSON.stringify(data));
+await writeFile(OUT_PATH, briefing, 'utf8');
+console.log(`✅ 朝6時 全AI報告会の資料を生成しました（${today}）→ AI共有ブリーフィング_最新.md`);
