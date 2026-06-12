@@ -1,0 +1,35 @@
+name: AI共有ブリーフィング（毎朝6時）
+
+on:
+  schedule:
+    - cron: '0 21 * * *'   # UTC 21:00 = 日本時間 朝6:00
+  workflow_dispatch:        # 手動実行も可能
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ai-sns-automation/package.json
+
+      - name: 依存パッケージをインストール
+        run: npm install --onnxruntime-node-install-cuda=skip
+        working-directory: ai-sns-automation
+
+      - name: LESSONS.md＋運用ボードをDriveの共有ブリーフィングへ転送
+        working-directory: ai-sns-automation
+        env:
+          GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
+          GAS_SHARED_TOKEN: ${{ secrets.GAS_SHARED_TOKEN }}
+        run: |
+          set -o pipefail
+          node scripts/daily_briefing.mjs | tee -a "$GITHUB_STEP_SUMMARY"
