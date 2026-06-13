@@ -2,8 +2,8 @@ name: AI共有ブリーフィング＆受信箱回収（双方向ルーティン
 
 on:
   schedule:
+    - cron: '0 20 * * *'   # UTC 20:00 = 日本時間 朝5:00（受信箱回収）
     - cron: '0 21 * * *'   # UTC 21:00 = 日本時間 朝6:00（朝の報告会＝配信）
-    - cron: '0 12 * * *'   # UTC 12:00 = 日本時間 21:00（夜の受信箱回収）
   workflow_dispatch:        # 手動実行も可能
   repository_dispatch:      # 受信箱が更新された瞬間に起動（GAS Driveトリガー等から叩く）
     types: [inbox_updated]
