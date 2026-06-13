@@ -1,49 +1,57 @@
-# Chrome版へのタスク指示：META_ACCESS_TOKEN 取得＆GitHub Secrets登録
+# コワーク/Chrome版へのタスク指示：Meta システムユーザートークン取得＆GitHub Secrets登録
 
-## あなたがやること（保存ボタンを押す直前まで）
+## ⚠️ 重要：旧手順（Graph API Explorer / 60日有効）は使わない
 
-ShinCRAFTのInstagramチェック＆LINE自動ミラーに必要な Meta アクセストークンを取得し、
-GitHub Secretsの `META_ACCESS_TOKEN` を更新する。
+**使用する手順：Meta Business Manager → システムユーザートークン（失効しない・永久有効）**
 
-**最後の「保存・更新」ボタンは押さない。** 入力完了状態まで進め、井上さんに「押してください」と伝える。
+理由：Graph API Explorerで取得できるユーザートークンは最大60日で失効する。
+システムユーザートークンは期限なしのため、更新作業が不要になる。
 
 ---
 
-## Step 1：Meta for Developers でトークンを取得する
+## あなた（コワーク/Chrome版）がやること
 
-1. **https://developers.facebook.com/tools/explorer/** を開く
-2. 右上のアカウントが ShinCRAFT のビジネスアカウント（または管理者権限のある個人アカウント）になっているか確認する
-3. 「Meta App」プルダウンから ShinCRAFT 用アプリを選ぶ（なければ作成：「新しいアプリを作成」→ビジネス用→ShinCRAFT）
-4. 「権限を追加」から以下を選択してチェック：
-   - `instagram_basic`
-   - `instagram_manage_insights`
-   - `pages_read_engagement`（あれば）
-5. 「アクセストークンを生成」ボタンを押す → ダイアログで認可する
-6. 生成されたトークン（`EAAxxxx...` の形式）をコピーする
+**最後の保存ボタンは押さない。** GitHub の「Update secret」ボタンと Meta の最終承認は井上さんが押す。
 
-### 短期トークン→長期トークンに変換（重要）
+---
 
-7. **https://developers.facebook.com/tools/debug/accesstoken/** を開く
-8. 取得したトークンを貼り付け「デバッグ」→有効期限を確認（短期なら次へ）
-9. 長期トークンへの変換：以下URLに自分のアプリIDとシークレットとトークンを入れてアクセス：
-   ```
-   https://graph.facebook.com/oauth/access_token
-     ?grant_type=fb_exchange_token
-     &client_id={APP_ID}
-     &client_secret={APP_SECRET}
-     &fb_exchange_token={SHORT_LIVED_TOKEN}
-   ```
-   → レスポンスの `access_token` が長期トークン（60日有効・`EAA`形式）
-10. 長期トークンをコピーしておく
+## Step 1：Meta Business Manager でシステムユーザーを作成してトークンを生成
+
+### 1-1. Business Manager にアクセス
+1. **https://business.facebook.com** を開く
+2. 上部のビジネスポートフォリオ名が ShinCRAFT のものになっているか確認する
+   - なっていなければ左上のドロップダウンで切り替える
+
+### 1-2. システムユーザーを作成（まだなければ）
+3. 左メニューまたは歯車アイコン → **「ビジネス設定」** を開く
+4. 左サイドバー → **「ユーザー」** → **「システムユーザー」** をクリック
+5. 「追加」ボタン → システムユーザー名（例：`shincraft-api`）を入力 → ロール：**「管理者」** を選択 → 作成
+
+### 1-3. アセット（ページ・IGアカウント）を割り当てる
+6. 作成したシステムユーザーをクリック → **「アセットを割り当てる」** をクリック
+7. 「ページ」タブ → ShinCRAFT の Facebook ページを選択 → 権限：**「フルコントロール」** → 変更を保存
+8. 「Instagram アカウント」タブ → ShinCRAFT の Instagram アカウントを選択 → 権限：**「フルコントロール」** → 変更を保存
+
+### 1-4. トークンを生成
+9. システムユーザーのページに戻り → **「トークンを生成」** をクリック
+10. 「アプリを選択」：**shincraft-check**（または ShinCRAFT に紐付けたアプリ）を選ぶ
+11. 「トークンの有効期限」：**「失効しない」** を選択
+12. 「権限」から以下をチェック（すべて必須）：
+    - `instagram_basic`
+    - `instagram_manage_insights`
+    - `pages_show_list`
+    - `pages_read_engagement`
+13. **「トークンを生成」** ボタンをクリック → Meta の認証ダイアログが出たら **井上さんに承認してもらう**
+14. 表示されたトークン（`EAAxxxx...` の形式）を**画面内でそのままコピー**（チャット・Docには貼らない）
 
 ---
 
 ## Step 2：GitHub Secrets の `META_ACCESS_TOKEN` を更新する
 
-1. **https://github.com/inouenyan-web/shincraft-site/settings/secrets/actions** を開く
-2. 「Repository secrets」の一覧から `META_ACCESS_TOKEN` を見つけ、「Update」をクリック
-3. 「Value」欄に Step 1 で取得した長期トークン（`EAAxxxx...`）を貼り付ける
-4. **「Update secret」ボタンは押さない。** ここで止まる。
+15. **https://github.com/inouenyan-web/shincraft-site/settings/secrets/actions** を開く（新しいタブ）
+16. 「Repository secrets」の一覧から `META_ACCESS_TOKEN` を見つけ → **「Update」** をクリック
+17. 「Value」欄に Step 1 でコピーしたトークンをペースト
+18. **「Update secret」ボタンは押さない。** ここで止まる。
 
 ---
 
@@ -52,15 +60,18 @@ GitHub Secretsの `META_ACCESS_TOKEN` を更新する。
 以下を伝える：
 
 > 「META_ACCESS_TOKEN の更新準備が完了しました。
-> GitHub の Secrets 画面で Value 欄に新しいトークンを入力済みです。
-> 「Update secret」ボタンを押して保存してください。
-> 保存後、Instagramチェック（毎朝）と出店告知→LINE自動ミラーが動き始めます。」
+> Meta のシステムユーザートークン（永久有効）を生成し、GitHub Secrets の Value 欄に入力済みです。
+> 2つの操作をお願いします：
+> ① Meta の認証ダイアログが出ていれば「承認」を押してください（出ていなければスキップ）
+> ② GitHub Secrets の画面で「Update secret」ボタンを押してください
+> 完了後、Instagramチェック（毎朝）と出店告知→LINE自動ミラーが動き始めます。」
 
 ---
 
 ## 補足情報
 
-- アプリID・シークレットは Meta for Developers の「アプリ設定 > ベーシック」で確認できる
-- 生成したトークンは `EAA` で始まる長い文字列（100文字以上）
+- **トークンはチャットやDocには絶対に貼らない**（Meta画面→GitHub画面の直接コピペで完結させる）
+- システムユーザートークンは `EAA` で始まる（ユーザートークンと同じ形式だが期限が異なる）
 - IG_USER_ID は `17841463083883101`（登録済み・変更不要）
-- GitHub Secrets 画面の URL：https://github.com/inouenyan-web/shincraft-site/settings/secrets/actions
+- アプリが見つからない場合：Meta for Developers → アプリ → shincraft-check をビジネスに紐付け
+- GitHub Secrets 画面：https://github.com/inouenyan-web/shincraft-site/settings/secrets/actions
