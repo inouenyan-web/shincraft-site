@@ -20,6 +20,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getRecentMedia } from './lib/instagram_client.mjs';
 import { broadcastToLine, toLineText } from './lib/line_client.mjs';
+import { isEventPost } from './lib/event_keywords.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATE_PATH = resolve(__dirname, '../data/line_mirrored.json');
@@ -27,19 +28,6 @@ const STATE_PATH = resolve(__dirname, '../data/line_mirrored.json');
 const DRY_RUN = process.argv.includes('--dry-run');
 const SEED = process.argv.includes('--seed');
 const LIMIT = 10;
-
-// 出店・イベント告知とみなすキーワード（本文に含まれていればLINEへ流す）。
-// 日常の軽い投稿を全友だちに一斉送信しないための絞り込み。
-const EVENT_KEYWORDS = [
-  '出店', '出展', 'イベント', 'マルシェ', 'マーケット', 'フェス', 'フェア',
-  'ワークショップ', '体験会', '販売会', '出店予定', '出店情報',
-  'POPUP', 'POP UP', 'ポップアップ', '催事', 'にて開催', '開催します', '出店します',
-];
-
-function isEventPost(caption) {
-  const text = String(caption || '');
-  return EVENT_KEYWORDS.some((kw) => text.includes(kw));
-}
 
 async function loadState() {
   try {

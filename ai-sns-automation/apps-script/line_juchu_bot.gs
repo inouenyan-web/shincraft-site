@@ -16,6 +16,15 @@
 
 const JUCHU_SHEET_ID = '10Ei0mrQS9MCK6p2ty_C0Me4yimc6eLLBOgWqCwIWicw';
 
+// Squareカタログの正規商品名（商品マスタはSquareが正・EC_INTEGRATION_PLAN.md）。
+// LINE受注の自由文字列をこの正式名称へ正規化し、第2の商品台帳化（表記揺れ）を防ぐ。
+// 将来 Square MCP が使えるセッションで square_item_id を突き合わせて埋める想定。
+const SQUARE_ITEM_NAMES = [
+  'ネームタグ大', 'ネームタグ中', 'ネームタグ小', 'ネームタグ星', '桶',
+  '多用途スタンド', 'ピアス', 'イヤリング', 'ネックレス', 'ステンレスタグ',
+  'イラスト作成代', 'オリジナル看板', '看板セット',
+];
+
 // ヘルスチェック用
 function doGet() {
   return ContentService
@@ -119,7 +128,9 @@ function parseWithClaude_(text, apiKey) {
     'フィールド定義：\n' +
     '- タスク: "完成"（個別受注）/"売上"（イベント出店・委託）/"コンサル" のいずれか\n' +
     '- 顧客名: 顧客名または店名（不明なら "不明"）\n' +
-    '- 商品名: 商品・サービス名\n' +
+    '- 商品名: 商品・サービス名。下記のSquare正規商品名リストに該当するものは、表記揺れを直して' +
+    'リストの正式名称に正規化する（例「スタンド」→「多用途スタンド」）。該当しなければ原文のまま。\n' +
+    '  Square正規商品名: ' + SQUARE_ITEM_NAMES.join(' / ') + '\n' +
     '- 詳細: 詳細・デザイン内容（任意）\n' +
     '- 備考: その他のメモ（任意）\n' +
     '- 単価: 単価（数値。不明なら null）\n' +
@@ -223,6 +234,7 @@ function appendToJuchuSheet_(p) {
     '',                 // 宛名
     '',                 // 列2
     '',                 // 列3
+    p.square_item_id || '', // square_item_id（将来Square連携で突合・現状は空で確保）
   ];
 
   sheet.appendRow(row);
