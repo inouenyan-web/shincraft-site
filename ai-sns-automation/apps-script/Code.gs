@@ -64,6 +64,8 @@ function doPost(e) {
         return json_(uploadFile_(req.folderId, req.fileName, req.base64, req.mimeType || 'image/png'));
       case 'appendToDoc':
         return json_(appendToDoc_(req.docId, req.content));
+      case 'writeToDoc':
+        return json_(writeToDoc_(req.docId, req.content));
       case 'readDoc':
         return json_({ ok: true, content: readDoc_(req.docId) });
       default:
@@ -241,6 +243,16 @@ function appendToDoc_(docId, content) {
   var doc = DocumentApp.openById(docId);
   var body = doc.getBody();
   body.appendParagraph(content);
+  doc.saveAndClose();
+  return { ok: true };
+}
+
+function writeToDoc_(docId, content) {
+  if (!docId || content === undefined) throw new Error('docId と content が必要です。');
+  var doc = DocumentApp.openById(docId);
+  var body = doc.getBody();
+  body.clear();
+  body.setText(content);
   doc.saveAndClose();
   return { ok: true };
 }
