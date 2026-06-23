@@ -5,6 +5,12 @@
         "hooks": [
           {
             "type": "command",
+            "command": "jq -n --rawfile lessons LESSONS.md --rawfile board 運用ボード.md '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":(\"=== LESSONS.md（全AI必読・恒久ルール）===\\n\" + $lessons + \"\\n=== 運用ボード.md（今の最優先）===\\n\" + $board)}}'",
+            "timeout": 10,
+            "statusMessage": "固定指示を読み込み中..."
+          },
+          {
+            "type": "command",
             "command": "bash .claude/hooks/ledger-status.sh",
             "timeout": 60,
             "statusMessage": "台帳を確認中..."
