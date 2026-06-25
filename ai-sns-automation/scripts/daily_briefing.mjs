@@ -11,7 +11,9 @@
 //   ③ 井上さんの考えの理解＝確立された行動原則（LESSONS.mdの行動原則）
 //
 // 実行: node scripts/daily_briefing.mjs
-// 環境変数は不要（GAS非依存・リポジトリ内で完結）
+// 環境変数: GAS_WEBAPP_URL / GAS_SHARED_TOKEN を設定すると、DriveのGoogle Docへも転送する。
+//          未設定ならローカルの md 生成のみで正常終了（Drive転送は静かにスキップ）。
+//          ※ワークフロー側で env を渡さないと「常にスキップ＝偽green」になるので注意。
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';

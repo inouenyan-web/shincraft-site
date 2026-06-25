@@ -32,6 +32,9 @@
 | 06-08 | Meta Business Managerのシステムユーザートークンは無期限 → 60日更新の仕組み自体を不要にできる |
 | 06-08 | **Square MCPコネクタがセッションに接続済み**（merchant=井上商店・ACTIVE実測確認）。Square商品登録は申請・待ち時間ゼロで直接実行できる |
 | 06-12 | **Squareに商品マスタ13点が既に存在し、ECサイト https://shincraft.square.site も公開済み**だった（大半が ecom_available=false で非表示なだけ）。新しい商品DBを作る前に既存資産を実測で棚卸しすること。商品一元管理はSquareカタログを正とする設計に確定 |
+| 06-25 | **「GAS分裂」の正体＝デプロイ分裂**：①GASプロジェクトが5個乱立（Drive実測。うち3個が「無題のプロジェクト」放置版）、②`GAS_WEBAPP_URL`が3系統に分裂（コンテナenv=死亡(Page Not Found)/GitHub Secret=旧版が応答/リポジトリCode.gs=最新だが未デプロイ）、③最新Code.gs（list/uploadFile/writeToDoc）がどのデプロイにも反映されていない。背景透過バッチの`必須項目が不足しています: fileId`は、旧版が`action:list`を解さず旧Yoom形式で応答していた動かぬ証拠。**分裂修復＝ファイル統合ではなく「最新Code.gsを1プロジェクトへ再デプロイしURLを統一」**。正プロジェクトは`1J5qyd…`（ShinCRAFT_SNS初期構築） |
+| 06-25 | **ワークフローの偽green**：daily-briefing.ymlの「報告会資料を生成」ステップに`env`が無く、daily_briefing.mjsがGAS未設定扱いでDrive転送を毎回スキップ→exit0でgreenになっていた。**「success」と「実処理が通った」は別物**。GAS依存ステップには必ず`env`を渡し、失敗時exit1で赤く表面化させる（06-04の偽成功バグと同根） |
+| 06-25 | **委譲は完了の実測とセット**：GAS再デプロイをコワークに委譲したが、受信箱Doc・全タスクDocが約2週間`[status: pending]`のまま無反応だった（Drive/Gmail実測）。委譲して終わりにせず受信箱で完了を実測し、停滞したら即・井上さん本人の最小アクションへ切替（原則#1の徹底）。clasp認証(localhost:8888コールバック)はリモートコンテナで受け取れず、対話的コード貼り戻しも跨ターンで脆い→**GAS再デプロイはブラウザ手動が最確実**。なお`GAS_WEBAPP_URL`/`GAS_SHARED_TOKEN`はコンテナenvに実在し、デプロイ済みGASの版差はcurl実測で判定できる |
 
 ## 🤝 Claude製品チームの正体と分担（2026-06-12 公式ドキュメントで確定）
 
@@ -96,5 +99,5 @@
 | Gmail MCP | ✅ | メール検索・下書き作成・ラベル |
 | Google Drive MCP | ✅ | ファイル読み書き・検索 |
 | Google Calendar MCP | ✅ | 予定の読み書き |
-| GAS Webアプリ | ✅ | 台帳API・Driveアップロード（uploadFile） |
+| GAS Webアプリ | ⚠️ 要再デプロイ | 台帳API・Driveアップロード。**デプロイ済みが旧版で固定（list/uploadFile/writeToDoc未反映）→再デプロイ必須**。正プロジェクト`1J5qyd…`(ShinCRAFT_SNS初期構築)。`GAS_WEBAPP_URL`/`GAS_SHARED_TOKEN`はコンテナenvに実在 |
 | 直接ネットワーク | ❌ | graph.facebook.com / api.github.com / api.thebase.in 等は403（環境設定で許可追加は可能） |

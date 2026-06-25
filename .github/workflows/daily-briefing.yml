@@ -36,6 +36,9 @@ jobs:
 
       - name: 報告会資料を生成
         working-directory: ai-sns-automation
+        env:
+          GAS_WEBAPP_URL: ${{ secrets.GAS_WEBAPP_URL }}
+          GAS_SHARED_TOKEN: ${{ secrets.GAS_SHARED_TOKEN }}
         run: |
           set -o pipefail
           node scripts/daily_briefing.mjs | tee -a "$GITHUB_STEP_SUMMARY"
