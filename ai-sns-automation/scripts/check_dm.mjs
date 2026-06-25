@@ -1,25 +1,24 @@
-// Instagram DM受信箱の監視と受注見込みタスク化
+// Instagram DM受信箱の監視と受注管理シートへの自動記録
 // GitHub Actions から1日2回（朝9時・夜9時 JST）呼び出す。
 //
 // 動作:
-//   1. Instagram Conversations API で直近24h の未読DMを取得
-//   2. 送信者名・本文・確度（キーワード判定）を「受注見込み」シートへ追記
-//      ※ message.id を fingerprint として重複防止
-//   3. 新着があれば台帳のステップサマリーに出力
-//      （LINE_CHANNEL_ACCESS_TOKEN があればLINE公式アカウントにもサマリーを送信）
+//   1. Instagram Conversations API で直近24h の受信DMを取得
+//   2. 購入意向あり（確度:高・中）のメッセージを受注管理シートへ直接追記
+//      ※ fingerprint（message.id）を IG_DM_log シートで重複防止
+//   3. 全DMの要約を LINE で報告
+//      （LINE_OWNER_USER_ID があれば井上さんへのpush、なければ全員ブロードキャスト）
 //
 // 必要scope（META_ACCESS_TOKEN に追加が必要）:
 //   instagram_manage_messages または instagram_business_manage_messages
-//   ※ 自社アカウントへのアクセスは Standard Access — App Review 審査不要
 //
 // 使い方:
 //   node scripts/check_dm.mjs [--dry-run]
 //
 // 必要env: IG_USER_ID, META_ACCESS_TOKEN, GAS_WEBAPP_URL, GAS_SHARED_TOKEN
-// 任意env: LINE_CHANNEL_ACCESS_TOKEN（設定するとLINEにもサマリーを送信）
+// 任意env: LINE_CHANNEL_ACCESS_TOKEN, LINE_OWNER_USER_ID
 
 import { callGas } from './lib/ledger.mjs';
-import { notifyDmEntriesToOwner } from './lib/line_client.mjs';
+import { notifyOwner } from './lib/line_client.mjs';
 import { requireEnv } from './lib/env.mjs';
 
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -32,13 +31,6 @@ const HIGH_KWORDS = ['注文', 'ご注文', 'ご発注', '購入', 'オーダー
 const MED_KWORDS  = ['欲しい', '買いたい', 'いくら', '価格', '値段', '在庫', '名入れ', 'カスタム', '作れ', '作れます'];
 const PROD_KWORDS = ['キーホルダー', 'ネームタグ', '桶', 'ピアス', 'イヤリング', 'ネックレス', 'タグ', '看板', 'チャーム'];
 
-// 「受注見込み」シートの列定義
-const ORDER_SHEET_HEADERS = [
-  '見込ID', '受信日時', '流入元', '元メッセージ',
-  '顧客名', '商品名', '詳細', '数量', '単価', '売上金額',
-  '納期見込', '確度', 'ステータス', '転記先レコード番号', 'fingerprint',
-];
-
 function detectConfidence(text) {
   const t = String(text || '');
   if (HIGH_KWORDS.some(k => t.includes(k))) return '高';
@@ -50,7 +42,6 @@ async function graphGet(accessToken, path, params = {}) {
   const url = new URL(GRAPH_API + path);
   url.searchParams.set('access_token', accessToken);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-
   const res = await fetch(url, { method: 'GET' });
   const data = await res.json();
   if (data.error) {
@@ -60,24 +51,24 @@ async function graphGet(accessToken, path, params = {}) {
   return data;
 }
 
-// 「受注見込み」シートを確保（なければ作成）
-async function ensureOrderSheet() {
-  return callGas({ action: 'ensureSheet', sheet: '受注見込み', headers: ORDER_SHEET_HEADERS });
-}
-
-// 既存 fingerprint 一覧を取得（重複チェック用）
-async function getExistingFingerprints() {
+// IG_DM_log シートで重複チェック用の fingerprint を管理
+async function getLoggedFingerprints() {
   try {
-    const res = await callGas({ action: 'list', sheet: '受注見込み' });
+    await callGas({ action: 'ensureSheet', sheet: 'IG_DM_log', headers: ['fingerprint', 'logged_at'] });
+    const res = await callGas({ action: 'list', sheet: 'IG_DM_log' });
     return new Set((res.rows || []).map(r => r['fingerprint'] || '').filter(Boolean));
   } catch {
     return new Set();
   }
 }
 
-// 「受注見込み」シートへ1行追記
-async function appendOrderRow(values) {
-  return callGas({ action: 'append', sheet: '受注見込み', values });
+async function logFingerprint(fingerprint, loggedAt) {
+  return callGas({ action: 'append', sheet: 'IG_DM_log', values: { fingerprint, logged_at: loggedAt } });
+}
+
+// 受注管理シートへ直接追記（Code.gs の appendToJuchuSheet アクション）
+async function addToJuchuSheet(entry) {
+  return callGas({ action: 'appendToJuchuSheet', values: entry });
 }
 
 function printFallback() {
@@ -103,7 +94,6 @@ async function main() {
   }
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
   console.log('📬 Instagram DM受信箱を取得中...');
 
   // 会話一覧を取得（最新50件）
@@ -116,7 +106,6 @@ async function main() {
     });
     conversations = data.data || [];
   } catch (e) {
-    // スコープ不足や認証エラーの場合
     if (/code=190|code=10|Permission|OAuthException|scope/.test(String(e.message))) {
       console.error(`⚠️ DM APIアクセス失敗: ${e.message}`);
       console.error('   META_ACCESS_TOKEN に instagram_manage_messages スコープが必要です（B1タスク）。');
@@ -130,12 +119,9 @@ async function main() {
   const recentConvs = conversations.filter(c => c.updated_time && new Date(c.updated_time) >= since);
   console.log(`直近24h更新の会話: ${recentConvs.length}/${conversations.length}件`);
 
-  if (!DRY_RUN) {
-    await ensureOrderSheet();
-  }
-
-  const existingFp = await getExistingFingerprints();
-  const newEntries = [];
+  const loggedFp = await getLoggedFingerprints();
+  const allEntries = [];   // 全DM（報告用）
+  const orderEntries = []; // 確度 高・中（受注管理シートへ）
 
   for (const conv of recentConvs) {
     let messages;
@@ -154,47 +140,33 @@ async function main() {
     const incoming = messages.filter(m => {
       if (!m.timestamp) return false;
       if (new Date(m.timestamp) < since) return false;
-      // 自社アカウントが送信したメッセージは除外
       return String(m.from?.id) !== String(env.IG_USER_ID);
     });
 
     for (const msg of incoming) {
       const fingerprint = msg.id;
-      if (existingFp.has(fingerprint)) continue;
+      if (loggedFp.has(fingerprint)) continue;
+      loggedFp.add(fingerprint);
 
-      existingFp.add(fingerprint);
       const senderName = msg.from?.username || msg.from?.name || String(msg.from?.id || '不明');
       const jstTime = new Date(msg.timestamp).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
       const msgText = String(msg.text || '（テキストなし）').slice(0, 500);
+      const confidence = detectConfidence(msgText);
 
-      newEntries.push({
-        '見込ID':           fingerprint,
-        '受信日時':          jstTime,
-        '流入元':           'Instagram DM',
-        '元メッセージ':      msgText,
-        '顧客名':           senderName,
-        '商品名':           '',
-        '詳細':             '',
-        '数量':             '',
-        '単価':             '',
-        '売上金額':          '',
-        '納期見込':          '',
-        '確度':             detectConfidence(msgText),
-        'ステータス':        '未確認',
-        '転記先レコード番号': '',
-        'fingerprint':      fingerprint,
-      });
+      const entry = { fingerprint, jstTime, senderName, msgText, confidence };
+      allEntries.push(entry);
+      if (confidence === '高' || confidence === '中') orderEntries.push(entry);
     }
   }
 
-  if (newEntries.length === 0) {
+  if (allEntries.length === 0) {
     console.log('✅ 直近24hの新着DM: 0件');
     return;
   }
 
-  console.log(`\n📋 新着DM: ${newEntries.length}件`);
-  for (const e of newEntries) {
-    console.log(`  [${e['確度']}] ${e['受信日時']} @${e['顧客名']}: ${e['元メッセージ'].slice(0, 60)}`);
+  console.log(`\n📋 新着DM: ${allEntries.length}件（うち受注見込み ${orderEntries.length}件）`);
+  for (const e of allEntries) {
+    console.log(`  [${e.confidence}] ${e.jstTime} @${e.senderName}: ${e.msgText.slice(0, 60)}`);
   }
 
   if (DRY_RUN) {
@@ -202,20 +174,51 @@ async function main() {
     return;
   }
 
-  // 受注見込みシートへ追記
-  for (const entry of newEntries) {
-    await appendOrderRow(entry);
+  // fingerprint をログに記録
+  for (const entry of allEntries) {
+    await logFingerprint(entry.fingerprint, entry.jstTime);
   }
 
-  console.log(`\n✅ ${newEntries.length}件を「受注見込み」シートへ記録しました。`);
-  console.log('   ShinCRAFT受注シート → 「受注見込み」タブでご確認ください。');
+  // 確度 高・中 → 受注管理シートへ直接追記
+  for (const entry of orderEntries) {
+    await addToJuchuSheet({
+      タスク: 'Instagram受注',
+      発注日: entry.jstTime,
+      顧客名: `@${entry.senderName}`,
+      商品名: '',
+      詳細: entry.msgText.slice(0, 200),
+      備考: `Instagram DM（確度${entry.confidence}）`,
+    });
+  }
+  if (orderEntries.length > 0) {
+    console.log(`\n✅ ${orderEntries.length}件を受注管理シートに追記しました。`);
+  }
 
-  // LINE通知（任意）
-  // LINE_OWNER_USER_ID が設定済みならFlexカルーセル（承認/保留ボタン）でpush、
-  // 未設定の場合は全フォロワーへテキストブロードキャストにフォールバック。
-  const lineResult = await notifyDmEntriesToOwner(newEntries);
+  // LINE報告
+  const high = allEntries.filter(e => e.confidence === '高');
+  const med  = allEntries.filter(e => e.confidence === '中');
+  const low  = allEntries.filter(e => e.confidence === '低');
+
+  const reportLines = [
+    `📬 ShinCRAFT Instagram DM新着（直近24h）: ${allEntries.length}件`,
+    '',
+    ...(high.length > 0 ? [
+      `🔴 購入意向あり（高）: ${high.length}件`,
+      ...high.map(e => `  ・@${e.senderName}: ${e.msgText.slice(0, 60)}`),
+    ] : []),
+    ...(med.length > 0 ? [
+      `🟡 問合せあり（中）: ${med.length}件`,
+      ...med.map(e => `  ・@${e.senderName}: ${e.msgText.slice(0, 40)}`),
+    ] : []),
+    ...(low.length > 0 ? [`⚪ その他: ${low.length}件`] : []),
+    ...(orderEntries.length > 0
+      ? [`\n✅ 受注管理シートに${orderEntries.length}件追記しました。`]
+      : []),
+  ].join('\n');
+
+  const lineResult = await notifyOwner(reportLines);
   if (lineResult) {
-    console.log('✅ LINE通知を送信しました。');
+    console.log('✅ LINE報告を送信しました。');
   } else {
     console.log('（LINE_CHANNEL_ACCESS_TOKEN 未設定のためLINE通知をスキップ）');
   }

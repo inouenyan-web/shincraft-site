@@ -68,6 +68,8 @@ function doPost(e) {
         return json_(writeToDoc_(req.docId, req.content));
       case 'readDoc':
         return json_({ ok: true, content: readDoc_(req.docId) });
+      case 'appendToJuchuSheet':
+        return json_(appendToJuchuSheet_(req.values || {}));
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -261,6 +263,47 @@ function readDoc_(docId) {
   if (!docId) throw new Error('docIdが必要です。');
   var doc = DocumentApp.openById(docId);
   return doc.getBody().getText();
+}
+
+// Instagram DM経由の受注見込みを受注管理シートへ直接追記する。
+// JUCHU_SHEET_IDの先頭シート（受注管理）の列順に合わせて行を組み立てる。
+function appendToJuchuSheet_(values) {
+  var JUCHU_SHEET_ID = '10Ei0mrQS9MCK6p2ty_C0Me4yimc6eLLBOgWqCwIWicw';
+  var ss = SpreadsheetApp.openById(JUCHU_SHEET_ID);
+  var sheet = ss.getSheets()[0];
+  var lastRow = sheet.getLastRow();
+  var recNo = lastRow; // ヘッダー行があるので lastRow = 次の連番
+  var today = values['発注日'] || Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd');
+  var 売上額 = values['売上金額'] ? Number(values['売上金額']) : null;
+
+  var row = [
+    recNo,                              // レコード番号
+    values['タスク'] || 'Instagram受注', // タスク
+    today,                              // 発注日
+    values['顧客名'] || '',             // 顧客名
+    values['商品名'] || '',             // 商品名
+    values['詳細'] || '',               // 詳細
+    values['備考'] || 'Instagram DM',  // 備考
+    values['単価'] || '',               // 単価
+    values['数量'] || '',               // 数量
+    売上額,                             // 売上金額
+    '',                                 // 消費税
+    '',                                 // 不要
+    売上額,                             // 売上
+    '',                                 // 発送方法
+    values['納期'] || '',               // 納期
+    '', '',                             // 請求日, 領収日
+    '',                                 // 領収方法
+    '', '', '',                         // 現金売上, Paypay売上, 振込売上
+    '',                                 // 領収証発行
+    '', '',                             // 郵便番号, 住所
+    '',                                 // 宛名
+    '', '',                             // 列2, 列3
+    '',                                 // square_item_id
+  ];
+
+  sheet.appendRow(row);
+  return { ok: true, rowNumber: sheet.getLastRow() };
 }
 
 function createManagementId_(now) {
