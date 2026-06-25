@@ -39,7 +39,10 @@ async function main() {
   console.log(JSON.stringify({ ok: true, input: inputPath, output: outputPath, bytes: outputBuffer.length }));
 }
 
-main().catch((e) => {
-  console.error("エラー: " + String(e.message || e));
-  process.exit(1);
-});
+import { fileURLToPath } from "node:url";
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((e) => {
+    console.error("エラー: " + String(e.message || e));
+    process.exit(1);
+  });
+}
