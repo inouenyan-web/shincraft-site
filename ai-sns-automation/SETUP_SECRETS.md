@@ -28,6 +28,7 @@
 | `IG_USER_ID` | Instagramチェック・IG→LINEミラー（投稿取得） | **両方** | Instagram Business Account ID（下記8章） |
 | `META_ACCESS_TOKEN` | Instagramチェック・IG→LINEミラー（Graph API長期トークン・**EAA形式**） | **両方** | Meta for Developers（下記8章） |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿 | **両方** | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
+| `LINE_OWNER_USER_ID` | IG DM新着をFlexメッセージで井上さん本人にpushする（未設定なら全員ブロードキャストにフォールバック） | **両方** | LINE受注ボットに「マイID」と送ると表示される（下記10章） |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -215,6 +216,19 @@ LINE_CHANNEL_ACCESS_TOKEN=your_token node scripts/post_to_buffer.mjs --dry-run
 - 最大5000文字（LINE制限）。通常の投稿は収まる。
 - 画像はLINEブロードキャストでは添付しない（テキストのみ）。
   画像を添付したい場合は Line Messaging API の `image` メッセージ型に対応が必要（要追加実装）。
+
+### 10-4. LINE_OWNER_USER_IDの取得（IG DM承認フローに必要）
+
+`LINE_OWNER_USER_ID` を登録すると、Instagram DM新着通知が全フォロワーへのブロードキャストの代わりに
+**井上さん本人へのpush＋Flexカルーセル（承認/保留ボタン付き）** に昇格する。
+
+**取得手順（1回だけ）：**
+1. LINE受注ボット（`line_juchu_bot.gs` でデプロイしたボット）を友だち追加してトーク画面を開く。
+2. **「マイID」** と送信する。
+3. ボットが返信した `U...` で始まるIDをコピーする。
+4. コピーしたIDを以下2か所に登録：
+   - Claude Code Web環境変数 `LINE_OWNER_USER_ID`
+   - GitHub Secrets `LINE_OWNER_USER_ID`（dm-check.yml の Actions用）
 
 ---
 

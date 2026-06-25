@@ -19,7 +19,7 @@
 // 任意env: LINE_CHANNEL_ACCESS_TOKEN（設定するとLINEにもサマリーを送信）
 
 import { callGas } from './lib/ledger.mjs';
-import { broadcastToLine } from './lib/line_client.mjs';
+import { notifyDmEntriesToOwner } from './lib/line_client.mjs';
 import { requireEnv } from './lib/env.mjs';
 
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -211,15 +211,9 @@ async function main() {
   console.log('   ShinCRAFT受注シート → 「受注見込み」タブでご確認ください。');
 
   // LINE通知（任意）
-  const highConfidence = newEntries.filter(e => e['確度'] === '高');
-  const lineText = [
-    `📬 Instagram DM新着: ${newEntries.length}件`,
-    highConfidence.length > 0 ? `  うち購入意向が高いもの: ${highConfidence.length}件` : '',
-    '  → ShinCRAFT受注シート「受注見込み」タブを確認してください。',
-    highConfidence.slice(0, 3).map(e => `  ・@${e['顧客名']}: ${e['元メッセージ'].slice(0, 40)}`).join('\n'),
-  ].filter(Boolean).join('\n');
-
-  const lineResult = await broadcastToLine(lineText);
+  // LINE_OWNER_USER_ID が設定済みならFlexカルーセル（承認/保留ボタン）でpush、
+  // 未設定の場合は全フォロワーへテキストブロードキャストにフォールバック。
+  const lineResult = await notifyDmEntriesToOwner(newEntries);
   if (lineResult) {
     console.log('✅ LINE通知を送信しました。');
   } else {
