@@ -29,6 +29,10 @@
 | `META_ACCESS_TOKEN` | Instagramチェック・IG→LINEミラー（Graph API長期トークン・**EAA形式**） | **両方** | Meta for Developers（下記8章） |
 | `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿 | **両方** | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
 | `LINE_OWNER_USER_ID` | IG DM新着をFlexメッセージで井上さん本人にpushする（未設定なら全員ブロードキャストにフォールバック） | **両方** | LINE受注ボットに「マイID」と送ると表示される（下記10章） |
+| `CHATWORK_API_TOKEN` | Chatworkのメッセージチェック（`check_inbox.mjs`） | GitHub Secrets | Chatwork → [APIトークン設定](https://www.chatwork.com/service/packages/chatwork/subpackages/api/token.php)（下記12章） |
+| `GMAIL_CLIENT_ID` | Gmail受信箱チェック（`check_inbox.mjs`） | GitHub Secrets | Google Cloud Console → OAuth 2.0 クライアントID（下記12章） |
+| `GMAIL_CLIENT_SECRET` | Gmail受信箱チェック | GitHub Secrets | 同上 |
+| `GMAIL_REFRESH_TOKEN` | Gmail受信箱チェック（無期限トークン） | GitHub Secrets | `node scripts/gmail_oauth_setup.mjs` で取得（下記12章） |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -262,3 +266,76 @@ LINE_CHANNEL_ACCESS_TOKEN=your_token node scripts/post_to_buffer.mjs --dry-run
 
 ### 11-4. 動作確認
 - Run workflow → mode=`dry-run` で、LINEへ流す対象だけを送信せず確認できる。
+
+---
+
+## 12. 統合受信箱チェック（Instagram DM / Chatwork / Gmail）
+
+`check_inbox.mjs` が **直近24hのメッセージを3チャンネル同時に監視**し、
+受注案件・交渉中タスクを受注管理シートへ自動追記・日次報告する。
+GitHub Actions（`.github/workflows/inbox-check.yml`）が朝9時・夜9時に実行。
+
+各チャンネルは **独立して動作**。トークン未設定のチャンネルは自動スキップするため、
+揃っていないものから順次有効化できる。
+
+### 12-1. Chatwork APIトークン取得
+
+1. [Chatwork APIトークン設定](https://www.chatwork.com/service/packages/chatwork/subpackages/api/token.php) を開く。
+2. 「APIトークン」欄のトークンをコピー。
+3. リポジトリ **Settings→Secrets→Actions** に `CHATWORK_API_TOKEN` として登録。
+
+### 12-2. Gmail OAuth2 トークン取得
+
+Gmail は OAuth2 が必要なため、1回だけセットアップ手順を踏む。
+
+**Google Cloud Console 側の準備（1回のみ）:**
+1. [Google Cloud Console](https://console.cloud.google.com/) → プロジェクト作成（または既存）。
+2. **APIs & Services → Library** で **Gmail API** を有効化。
+3. **APIs & Services → OAuth consent screen** を設定：
+   - User Type: 外部
+   - アプリ名: ShinCRAFT（任意）
+   - スコープ: `https://www.googleapis.com/auth/gmail.readonly`
+   - テストユーザーに `shincraft2023@gmail.com` を追加
+4. **APIs & Services → Credentials → OAuth 2.0 Client IDs を作成**：
+   - アプリの種類: **デスクトップアプリ**
+   - → `client_id`（`xxx.apps.googleusercontent.com`）と `client_secret`（`GOCSPX-xxx`）を取得
+
+**GMAIL_REFRESH_TOKEN の取得（ローカルPCで1回のみ）:**
+```bash
+cd ai-sns-automation && npm install
+GMAIL_CLIENT_ID=xxx.apps.googleusercontent.com \
+GMAIL_CLIENT_SECRET=GOCSPX-xxx \
+node scripts/gmail_oauth_setup.mjs
+```
+→ 表示されたURLをブラウザで開く → shincraft2023@gmail.com で認証 → 認証コードをコピー → ターミナルに貼り付け  
+→ `GMAIL_REFRESH_TOKEN = 1//xxx...` が表示される。
+
+**GitHub Secrets に3つ登録（Settings→Secrets→Actions）:**
+| Secret名 | 値 |
+|---|---|
+| `GMAIL_CLIENT_ID` | `xxx.apps.googleusercontent.com` |
+| `GMAIL_CLIENT_SECRET` | `GOCSPX-xxx` |
+| `GMAIL_REFRESH_TOKEN` | `1//xxx...`（上記で取得した値） |
+
+### 12-3. ネットワーク許可ホスト追加
+GitHub Actions では不要（全通信許可）。Claude Code Webセッションで手動実行する場合：
+- `api.chatwork.com` … Chatwork API
+- `gmail.googleapis.com`, `accounts.google.com` … Gmail API / OAuth2
+
+### 12-4. 動作確認
+```bash
+cd ai-sns-automation
+# 書き込みせず確認だけ
+CHATWORK_API_TOKEN=xxx GMAIL_CLIENT_ID=xxx GMAIL_CLIENT_SECRET=xxx GMAIL_REFRESH_TOKEN=xxx \
+node scripts/check_inbox.mjs --dry-run
+```
+
+GitHub Actions から手動実行:
+Actionsタブ →「統合受信箱チェック（朝晩2回）」→ Run workflow
+→ `dry-run` チェックをONにすればシートに書き込まない。
+
+### 12-5. 受注管理シートへの追記ルール
+- 確度「高」（注文/購入/発注 等のキーワード含む）→ **受注案件** として追記
+- 確度「中」（見積/相談/価格/欲しい 等）→ **交渉中タスク** として追記
+- 確度「低」→ 報告のみ（シートへの書き込みなし）
+- 重複防止: `inbox_log` シートで fingerprint を管理し、同一メッセージを2回追記しない
