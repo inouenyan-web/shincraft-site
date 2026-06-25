@@ -1,4 +1,4 @@
-# 朝6時 全AI報告会（2026/6/25 自動開催）
+# 朝6時 全AI報告会（2026/6/13 自動開催）
 
 > **参加者：コード（Claude Code各セッション）／チャット（Chrome版Claude）／コワーク／ChatGPT**
 > 各AIは作業開始前にこの報告会資料を必ず読み、以下を自分の頭に同期すること：
@@ -32,8 +32,6 @@
 | 6 | 2026-06-08 | 「使える機能があるのに私にムリとすぐ言うな。何のためのコネクタ？」 | **「できない」と言う前にコネクタ・MCP・プラグインを全部棚卸しして実測検証する**。Square MCPが接続済みなのに見落としていた実例あり |
 | 7 | 2026-06-08 | 「私の作業を常に極限まで減らせ。話を記録してないのか」 | 指摘は全部このファイルに記録。各AIがセッション開始時に読む |
 | 8 | 2026-06-08 | 「毎日6時に各AIで指摘を共有して学習しろ。足並みを揃えろ」 | 毎朝6時に本ファイル＋運用ボードをDriveへ自動転送し、全AIが参照する |
-| 9 | 2026-06-12 | 「ChatGPTやCodexも含めて連動できてるんやろ？その方向で自動化ルートを常に考えろ」 | **外部AI（ChatGPT/Codex/Gemini）もコワーク＋Chrome経由で傘下に置く**。井上さんを伝書鳩にしない（下記・指揮系統） |
-| 10 | 2026-06-12 | 「エージェント・部署構造はどこにいったん？こんなこと言わせるな」 | **指揮系統には必ず社内部署（専属エージェント）の層を含めて運用する**。部署を忘れた組織図を二度と描かない |
 
 ## 🔧 技術的な教訓（失敗から学んだこと）
 
@@ -64,7 +62,10 @@
 - 「コワーク↔Chrome版の連動」は公式仕様（CoworkがWeb作業をChrome拡張へ委譲する）。
 - ログイン画面・CAPTCHA・機密値の入力はどの製品でも人間に残る（Anthropicポリシー）。
 - 24時間確実に動かしたい定期処理はGitHub Actions（コード担当）に置く。Coworkの定期実行はPC起動中のみ。
-- **AI間の連絡手段**：Driveの「AI報告受信箱」ドキュメント（AIフォルダ内）に各AIが追記し、コードが読む。
+- **AI間の連絡手段**：Driveの「AI報告受信箱」（ID: `1alE6ds2j-iGG-n_vG1wslVuZfo19q-z66ibJiLvd2_g`）に各AIが追記し、コードが読む。
+- **コワーク・チャットへの自動委譲**：Claude Codeセッション内は Drive MCP `create_file` でAIフォルダにタスクDocを直接作成。スクリプトからは GAS `appendToDoc` 経由で受信箱Docに追記。コワークは起動時に読んで実行 → 結果を書き戻す。詳細: `ai-sns-automation/COWORK_STARTUP_PROMPT.md` / `CHAT_BRIEFING_PROMPT.md`。
+- **GAS appendToDoc/readDoc**：Code.gs に追加済み（2026-06-12）。GAS再デプロイ1回で有効化できる。
+- **Cowork起動手順_最新 Doc**：Drive AIフォルダ内 ID `1kw3DtfJOaKv2KY-wqqCvdJHc-vUjKtuJ5poxEC14yQw`。コワーク起動時に必ず読む。最新タスクが記載されている。
 
 ### 指揮系統・部署構造（コードが陣頭指揮・社内部署＋外部AIすべて傘下）
 
@@ -128,7 +129,7 @@
 > 4. 優先順位はこのボードの「今の最優先」に従う。勝手に別作業を始めない。
 > 5. 井上さんに返すのは**チェックと承認だけ**。質問・相談は最小限。
 
-最終更新：2026-06-08 / 更新者：relaxed-feynman
+最終更新：2026-06-12 / 更新者：relaxed-feynman
 
 ---
 
@@ -145,7 +146,12 @@
         スコープ：instagram_basic, instagram_manage_insights, pages_show_list, pages_read_engagement／期限：**失効しない**
      4. 表示されたトークンを GitHub Secrets の `META_ACCESS_TOKEN` に貼って保存（チャットに貼らない）
    - 完了後：秘書セッションが instagram-check.yml を実行して動作確認 → refresh系の撤去。
-   - コワーク委譲は検討の結果**却下**（人間のログイン作業が消えず、秘密がOpenAIクラウド記録に乗りDELEGATION.mdルール違反）。
+   - **06-12：コワークへ自動委譲済み**。Drive AIフォルダに「タスク_Metaトークン設定（最優先）」Doc
+     （ID: `18GQx6YL3bllEQ_hAnvtQ2HsaXBXb0-W-lkiIlMtaKu4`）を作成。コワークが次回起動時に
+     Chrome版と連動して画面操作を実行し、井上さんは権限承認＋最後の保存ボタンだけ。
+   - ~~コワーク委譲は却下~~ →**06-12訂正**：却下理由は「コワーク＝ChatGPT」という誤解に基づく誤判断だった。
+     コワークの正体は **Anthropic Claude Cowork**（Chrome版と公式連動・コネクタ共有）。詳細はLESSONS.mdの分担表。
+     ただしOAuth認可・機密値の入力が人間に残る点は製品を問わず同じで、方針C自体は変わらない。
 
 2. **IG→LINE自動ミラー：実装済み／上記1の完了待ち**
    - 出店・イベント告知をInstagram投稿すると公式LINEへ自動ブロードキャスト（GitHub Actions・30分間隔）。
@@ -160,13 +166,14 @@
 4. **投稿パイプライン（/sns）**：X・Instagram（Buffer経由）の環境変数が揃えば全自動化。
    - LINE連携は設定済み。未登録：`X_API_KEY/SECRET/ACCESS_TOKEN/ACCESS_SECRET`、`BUFFER_ACCESS_TOKEN`、`BUFFER_INSTAGRAM_PROFILE_ID`。
 
-5. **商品一元管理システム構築 — 調査完了・実装計画確定（詳細：`ai-sns-automation/EC_INTEGRATION_PLAN.md`）**
-   - 2026-06-08 全員会議（BASE班・ZenPlus班並行調査）で実装計画を確定。
-   - **Square：MCPコネクタ接続済み（実測・井上商店ACTIVE）→ 商品登録は申請ゼロで即実行可能。最優先の展開先**。
-   - BASE：商品登録API◎（要・開発者申請＝**承認1〜2週間**）。ZenPlus：出店5分・CSV一括登録○・SNS用固定URLあり。
-   - BASE新機能「かんたん海外販売」（エントリーのみ・手数料5%）も併用推奨。
-   - creema/minne はAPIなし → 登録テキスト自動生成で半自動。
-   - **フェーズ0（BASE開発者申請・ZenPlus出店・かんたん海外販売エントリー）はリードタイム確保のため先行着手可**。
+5. **商品一元管理システム構築 — Squareカタログを商品マスタに確定（詳細：`ai-sns-automation/EC_INTEGRATION_PLAN.md`）**
+   - **実測発見（06-12）**：Squareに商品マスタ13点が既に登録済み・ECサイト https://shincraft.square.site も公開済み。
+     ただし大半の商品が ecom_available=false（オンライン非表示）。
+   - **次の一手（承認待ち）**：既存13商品の ecom_available を有効化すればECサイトに即掲載できる。
+     どの商品を公開するか井上さんの承認1回 → Claude CodeがMCPで直接切替。
+   - BASE：商品登録API◎（要・開発者申請＝承認1〜2週間）。ZenPlus：出店5分・CSV一括登録○。
+   - creema/minne はAPIなし → Squareカタログから登録テキスト自動生成で半自動。
+   - 商品データはSquareが正。台帳（Sheets）はSNS投稿管理に専念（二重入力ゼロ）。
 
 ---
 
@@ -174,7 +181,7 @@
 
 | セッション名 | 担当作業 | 状態 | 最終更新 |
 |---|---|---|---|
-| relaxed-feynman | 朝6時全AI報告会の構築・EC調査・Metaトークン方針C | 報告会稼働開始 | 06-08 |
+| relaxed-feynman | 社内部署→コワーク/チャット自動委譲機構の実装＋タスクDoc投入（Metaトークン・GAS再デプロイ・BASE/ZenPlus） | コワークの次回起動待ち | 06-12 |
 | （各セッションはここに自分を追記する） | | | |
 
 ---
@@ -183,19 +190,29 @@
 
 | 日付 | 内容 | セッション |
 |---|---|---|
-| 06-08 | 朝6時 全AI報告会を構築（LESSONS.md＋運用ボード→Drive自動転送・daily-briefing.yml） | relaxed-feynman |
-| 06-08 | Square MCPコネクタ接続を実測確認（井上商店ACTIVE）→ EC計画の最優先展開先に昇格 | relaxed-feynman |
+| 06-12 | 社内部署→コワーク/チャット自動委譲機構を実装（drive_inbox.mjs・COWORK_STARTUP_PROMPT・CHAT_BRIEFING_PROMPT・GAS appendToDoc/readDoc） | relaxed-feynman |
+| 06-12 | Drive AIフォルダにコワーク用タスクDoc投入：Metaトークン設定（最優先）・GAS再デプロイ・BASE申請・ZenPlus出店 | relaxed-feynman |
 | 06-08 | EC連携全員会議：BASE API・ZenPlus並行調査完了 → EC_INTEGRATION_PLAN.md に実装計画を確定 | relaxed-feynman |
 | 06-08 | 全エージェント検討：コワーク委譲却下・システムユーザートークン（無期限）採用を決定 | relaxed-feynman |
 | 06-08 | instagram-token-refresh.yml の npm install バグ修正（CUDA skip）・mainへ反映 | relaxed-feynman |
 | 06-07 | instagram-check.yml の偽成功バグ修正をmainへ直接反映（set -o pipefail） | relaxed-feynman |
+| 06-07 | Metaトークン自動更新(B)採用を決定・運用ボードに初回設定手順を明記 | relaxed-feynman |
 | 06-06 | IG→LINE自動ミラー実装（出店/イベント告知をLINE公式へ自動配信・Actions） | relaxed-feynman |
 | 06-06 | LINEトークンを環境変数＋GitHub Secretsに登録完了（LINE連携の前提充足） | relaxed-feynman |
-| 06-03 | Instagramトークン自動更新を実装（月2回・Secret自動書換） | 秘書 |
-| 06-03 | Instagramチェックをgithub actions化（毎朝＋手動） | 秘書 |
+| 06-04 | instagram-check.yml 偽成功バグ修正（set -o pipefail）・SETUP_SECRETS.md 登録先明記 | relaxed-feynman |
+| 06-03 | Instagramトークン自動更新を実装（月2回・Secret自動書換／npm ci→install統一） | 秘書 |
+| 06-03 | Instagramチェックをgithub actions化（毎朝＋手動・ネット制限回避） | 秘書 |
+| 06-03 | Instagramチェック自動化を実装（check_instagram.mjs／Graph API・読取専用） | 秘書 |
+| 06-03 | 6月の出店告知投稿 完了 | 秘書 |
 | 06-03 | 商品写真22枚 背景透過→Drive(02_背景透過済み)アップロード完了 | relaxed-feynman |
+| 06-03 | GAS新規デプロイ（Drive操作対応・uploadFile/listFolder等） | relaxed-feynman |
+| 06-03 | CLAUDE.md恒久ルール追加：井上さんに頼む範囲を本人のみ操作に限定 | relaxed-feynman |
+| 06-03 | Chrome版↔Claude Code橋渡し（連携ブリッジシート）往復テスト成功 | relaxed-feynman |
+| 06-03 | 名入れキーホルダー（ニンジャ）投稿済み（手動） | relaxed-feynman |
 | 06-01 | 有料記事 paid_01〜04 をmainへマージ（PR#7） | paid-article |
+| 06-01 | 背景透過 PhotoRoom→imgly 差し替え（PR#8） | stoic-dirac |
 | 06-01 | /sns オーケストレーター化＋Instagram投稿（PR#6） | festive-tesla |
+| 06-01 | 委譲ルール統一（PR#9）／Chrome版先回りルール（PR#10） | 秘書 |
 
 ---
 
@@ -206,8 +223,6 @@
   1セッションが単独判断で直列に委譲する（自分→Chrome版→井上さん、のようなピラミッド式）のは禁止。
   - 例：Metaトークン問題は単独判断では「3Secret手動登録」で止まったが、並行検討により「無期限システムユーザートークンで作業ごと消す」という上位解が出た。
   - 実装方法：判断が必要なタスクが来たら Agent ツールで調査・設計レビュー等の検討チームを並行起動し、結果を統合してから方針を決める。
-- **🔴 遊休ゼロの原則**：人間待ち・外部待ちでブロックされたら、余った稼働を運用ボードの他の優先タスクの補助に自動的に回す。
-- **🔴 学習共有**：`LESSONS.md` は全セッション必読。新しい指摘はその場で追記してpush。毎朝6時に報告会資料がDriveへ自動転送される。
 - **大原則**：Claude Code が全部やる。自分で完結できない時は、**最適な手段を自分で選び、その手段へ渡す「指示プロンプト」まで自分で作って井上さんに提示する**。井上さんはコピペ＆承認だけ。手段選びを井上さんに聞かない。
 - **アクセス不可URL**（Instagram等）：聞かれる前にChrome版プロンプトを出す。
 - **ハッシュタグ上限5個**（2026年Instagram仕様）。

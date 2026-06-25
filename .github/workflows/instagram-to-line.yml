@@ -1,0 +1,66 @@
+name: Instagram→LINE自動ミラー（出店・イベント告知）
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # 30分おきにチェック
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '実行モード'
+        type: choice
+        default: run
+        options:
+          - run        # 新着告知をLINEへ配信
+          - dry-run    # 送信せず対象だけ表示
+          - seed       # 既存投稿を「配信済み」として記録（初回の誤爆防止）
+
+permissions:
+  contents: write   # 配信済みstateファイルをコミットするため
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ai-sns-automation/package.json
+
+      - name: 依存パッケージをインストール
+        run: npm install
+        working-directory: ai-sns-automation
+
+      - name: IG→LINEミラー実行
+        working-directory: ai-sns-automation
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+        run: |
+          set -o pipefail
+          MODE='${{ github.event.inputs.mode }}'
+          case "$MODE" in
+            dry-run) FLAG='--dry-run' ;;
+            seed)    FLAG='--seed' ;;
+            *)       FLAG='' ;;
+          esac
+          node scripts/mirror_instagram_to_line.mjs $FLAG | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: 配信済みstateの変更をコミット
+        run: |
+          if [[ -n "$(git status --porcelain ai-sns-automation/data/line_mirrored.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add ai-sns-automation/data/line_mirrored.json
+            git commit -m "chore: IG→LINEミラー配信済みstateを更新 [skip ci]"
+            git push
+          else
+            echo "stateの変更なし（コミット不要）"
+          fi

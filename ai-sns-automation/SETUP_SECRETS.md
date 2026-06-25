@@ -5,23 +5,29 @@
 
 ## 1. 登録する環境変数
 
-| 変数名 | 用途 | 取得元 |
-|---|---|---|
-| `X_API_KEY` | X投稿（OAuth1.0a App Key） | X Developer Portal |
-| `X_API_SECRET` | X投稿（App Secret） | 同上 |
-| `X_ACCESS_TOKEN` | X投稿（ユーザーAccess Token） | 同上 |
-| `X_ACCESS_SECRET` | X投稿（Access Token Secret） | 同上 |
-| `NOTE_USERNAME` | `note.com/<ここ>/rss` のユーザー名 | noteのプロフィールURL |
-| `NOTE_X_TEMPLATE` | （任意）note→X 投稿文。`{title}` `{link}` を置換 | 任意 |
-| `GAS_WEBAPP_URL` | 台帳API（Apps Script WebアプリURL） | Apps Scriptのデプロイ |
-| `GAS_SHARED_TOKEN` | 台帳API認証トークン | 任意の長い乱数。下記参照 |
-| `BUFFER_ACCESS_TOKEN` | Instagram投稿（Buffer Publish API） | Buffer → Settings → Access Token |
-| `BUFFER_INSTAGRAM_PROFILE_ID` | Buffer上のInstagramプロファイルID | Buffer API `/profiles.json` で確認 |
-| `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | 任意 |
-| `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
-| `IG_USER_ID` | Instagramチェック（投稿・コメント取得） | Instagram Business Account ID（下記8章） |
-| `META_ACCESS_TOKEN` | Instagramチェック（Graph API長期トークン） | Meta for Developers（下記8章） |
-| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿（任意） | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
+> **登録先の違い（重要）**
+> - **Claude Code 環境変数**：セッション実行時（`/sns` 等）に使う変数。Claude Code Webの「環境変数」設定から登録。
+> - **GitHub Secrets**：GitHub Actions（毎朝チェック・IG→LINEミラー等）で使う変数。リポジトリ Settings → Secrets → Actions から登録。
+> - ★ LINE_CHANNEL_ACCESS_TOKEN は `/sns` 用に Claude Code 環境変数へ。IG→LINE自動ミラー（Actions）用に GitHub Secrets にも登録（両方）。
+> - ★ META_ACCESS_TOKEN は GitHub Secrets にも登録が必要（8章参照）。
+
+| 変数名 | 用途 | 登録先 | 取得元 |
+|---|---|---|---|
+| `X_API_KEY` | X投稿（OAuth1.0a App Key） | Claude Code | X Developer Portal |
+| `X_API_SECRET` | X投稿（App Secret） | Claude Code | 同上 |
+| `X_ACCESS_TOKEN` | X投稿（ユーザーAccess Token） | Claude Code | 同上 |
+| `X_ACCESS_SECRET` | X投稿（Access Token Secret） | Claude Code | 同上 |
+| `NOTE_USERNAME` | `note.com/<ここ>/rss` のユーザー名 | Claude Code | noteのプロフィールURL |
+| `NOTE_X_TEMPLATE` | （任意）note→X 投稿文。`{title}` `{link}` を置換 | Claude Code | 任意 |
+| `GAS_WEBAPP_URL` | 台帳API（Apps Script WebアプリURL） | Claude Code | Apps Scriptのデプロイ |
+| `GAS_SHARED_TOKEN` | 台帳API認証トークン | Claude Code | 任意の長い乱数。下記参照 |
+| `BUFFER_ACCESS_TOKEN` | Instagram投稿（Buffer Publish API） | Claude Code | Buffer → Settings → Access Token |
+| `BUFFER_INSTAGRAM_PROFILE_ID` | Buffer上のInstagramプロファイルID | Claude Code | Buffer API `/profiles.json` で確認 |
+| `ATTACH_IMAGE` | （任意）`1`で投稿時に画像添付を試みる | Claude Code | 任意 |
+| `DRIVE_NOBG_FOLDER_ID` | 背景透過済み画像の保存先DriveフォルダID | Claude Code | Google Drive で `02_背景透過済み` フォルダを作成して確認 |
+| `IG_USER_ID` | Instagramチェック・IG→LINEミラー（投稿取得） | **両方** | Instagram Business Account ID（下記8章） |
+| `META_ACCESS_TOKEN` | Instagramチェック・IG→LINEミラー（Graph API長期トークン・**EAA形式**） | **両方** | Meta for Developers（下記8章） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式アカウントへのブロードキャスト投稿 | **両方** | LINE Developers → チャンネル → Messaging API → チャンネルアクセストークン（下記10章） |
 
 ## 2. ネットワーク許可ホスト（重要）
 
@@ -209,3 +215,36 @@ LINE_CHANNEL_ACCESS_TOKEN=your_token node scripts/post_to_buffer.mjs --dry-run
 - 最大5000文字（LINE制限）。通常の投稿は収まる。
 - 画像はLINEブロードキャストでは添付しない（テキストのみ）。
   画像を添付したい場合は Line Messaging API の `image` メッセージ型に対応が必要（要追加実装）。
+
+---
+
+## 11. Instagram→LINE 自動ミラー（出店・イベント告知を自動配信）
+
+井上さんが **Instagramに出店・イベント告知を投稿すると、公式LINEへ自動でブロードキャスト** する。
+`/sns` を通さず、Instagramアプリから直接投稿したものも対象。GitHub Actions で30分おきにチェックする。
+実装：`scripts/mirror_instagram_to_line.mjs` ／ `.github/workflows/instagram-to-line.yml`。
+
+### 11-1. 仕組みと絞り込み
+- Instagram Graph API で最新投稿を取得 → 本文に **出店・イベント告知キーワード**
+  （出店／イベント／マルシェ／ポップアップ等）を含む投稿だけをLINEへ流す。
+- 日常の軽い投稿を全友だちに一斉送信しないための絞り込み（キーワードは
+  `mirror_instagram_to_line.mjs` の `EVENT_KEYWORDS` で調整可能）。
+- 配信済み投稿IDは `data/line_mirrored.json` に記録し、重複送信を防止（Actionsが自動コミット）。
+
+### 11-2. 必要な GitHub Secrets（リポジトリ Settings→Secrets→Actions）
+| Secret名 | 用途 |
+|---|---|
+| `IG_USER_ID` | 投稿取得（8章で登録済み） |
+| `META_ACCESS_TOKEN` | 投稿取得（**有効なEAA形式トークンが必要**・8章） |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE公式へのブロードキャスト（10章） |
+
+> ⚠️ `META_ACCESS_TOKEN` が無効だと投稿検出ができず動かない。8章で有効なトークンを取得・登録すること。
+
+### 11-3. 初回の誤爆防止（重要）
+有効化した直後は、既存の過去投稿がまとめてLINEに流れないよう、まず一度 **seed** を実行する：
+- Actionsタブ →「Instagram→LINE自動ミラー」→ Run workflow → mode=`seed`
+- これで現在の最新投稿群を「配信済み」として記録だけする（送信しない）。
+- 以降は、新しく投稿された告知だけがLINEへ流れる。
+
+### 11-4. 動作確認
+- Run workflow → mode=`dry-run` で、LINEへ流す対象だけを送信せず確認できる。

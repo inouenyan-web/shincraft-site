@@ -13,6 +13,8 @@
 //   { token, action: "listFolder", folderId }                  -> フォルダ内の画像一覧
 //   { token, action: "getFileBase64", fileId }                 -> ファイルをbase64で取得
 //   { token, action: "uploadFile", folderId, fileName, base64, mimeType } -> アップロード
+//   { token, action: "appendToDoc", docId, content }            -> Googleドキュメント末尾に追記
+//   { token, action: "readDoc", docId }                         -> Googleドキュメント全文を取得
 //   旧Yoom互換: action未指定 + fileId/fileName/fileUrl があれば従来の追記を実行
 //
 // セキュリティ:
@@ -60,6 +62,12 @@ function doPost(e) {
         return json_({ ok: true, base64: getFileBase64_(req.fileId), mimeType: getFileMimeType_(req.fileId) });
       case 'uploadFile':
         return json_(uploadFile_(req.folderId, req.fileName, req.base64, req.mimeType || 'image/png'));
+      case 'appendToDoc':
+        return json_(appendToDoc_(req.docId, req.content));
+      case 'writeToDoc':
+        return json_(writeToDoc_(req.docId, req.content));
+      case 'readDoc':
+        return json_({ ok: true, content: readDoc_(req.docId) });
       default:
         throw new Error('未知のaction: ' + action);
     }
@@ -228,6 +236,31 @@ function uploadFile_(folderId, fileName, base64, mimeType) {
   var file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   return { ok: true, fileId: file.getId(), url: file.getUrl(), name: file.getName() };
+}
+
+function appendToDoc_(docId, content) {
+  if (!docId || !content) throw new Error('docId と content が必要です。');
+  var doc = DocumentApp.openById(docId);
+  var body = doc.getBody();
+  body.appendParagraph(content);
+  doc.saveAndClose();
+  return { ok: true };
+}
+
+function writeToDoc_(docId, content) {
+  if (!docId || content === undefined) throw new Error('docId と content が必要です。');
+  var doc = DocumentApp.openById(docId);
+  var body = doc.getBody();
+  body.clear();
+  body.setText(content);
+  doc.saveAndClose();
+  return { ok: true };
+}
+
+function readDoc_(docId) {
+  if (!docId) throw new Error('docIdが必要です。');
+  var doc = DocumentApp.openById(docId);
+  return doc.getBody().getText();
 }
 
 function createManagementId_(now) {

@@ -51,3 +51,24 @@ const briefing = [
 
 await writeFile(OUT_PATH, briefing, 'utf8');
 console.log(`✅ 朝6時 全AI報告会の資料を生成しました（${today}）→ AI共有ブリーフィング_最新.md`);
+
+// GAS経由でDriveのGoogle Docを上書き（コワーク・Chrome版が読む）
+const gasUrl = process.env.GAS_WEBAPP_URL;
+const gasToken = process.env.GAS_SHARED_TOKEN;
+const BRIEFING_DOC_ID = '1nItOD505h2CHEMd_xjUtPaupAF0QNHR-u1IMhf0cGf0';
+if (gasUrl && gasToken) {
+  const res = await fetch(gasUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: gasToken, action: 'writeToDoc', docId: BRIEFING_DOC_ID, content: briefing }),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    console.log('✅ DriveのAI共有ブリーフィング_最新 を更新しました。');
+  } else {
+    console.error('⚠️ Drive更新失敗:', data.error);
+    process.exit(1);
+  }
+} else {
+  console.log('⚠️ GAS_WEBAPP_URL/GAS_SHARED_TOKEN 未設定 — Drive転送をスキップ');
+}
