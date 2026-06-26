@@ -1,4 +1,4 @@
-# 朝6時 全AI報告会（2026/6/13 自動開催）
+# 朝6時 全AI報告会（2026/6/26 自動開催）
 
 > **参加者：コード（Claude Code各セッション）／チャット（Chrome版Claude）／コワーク／ChatGPT**
 > 各AIは作業開始前にこの報告会資料を必ず読み、以下を自分の頭に同期すること：
@@ -32,6 +32,8 @@
 | 6 | 2026-06-08 | 「使える機能があるのに私にムリとすぐ言うな。何のためのコネクタ？」 | **「できない」と言う前にコネクタ・MCP・プラグインを全部棚卸しして実測検証する**。Square MCPが接続済みなのに見落としていた実例あり |
 | 7 | 2026-06-08 | 「私の作業を常に極限まで減らせ。話を記録してないのか」 | 指摘は全部このファイルに記録。各AIがセッション開始時に読む |
 | 8 | 2026-06-08 | 「毎日6時に各AIで指摘を共有して学習しろ。足並みを揃えろ」 | 毎朝6時に本ファイル＋運用ボードをDriveへ自動転送し、全AIが参照する |
+| 9 | 2026-06-16 | 「私がクロードコードに出す指示は軽いものではない。常に全員会議の原則で動け」 | **井上さんからの指示は例外なく全員会議を起点にする**。原則#4の徹底版。指示を受けたら、即答せず、まず Agent ツールで検討チーム（調査・代替設計・検証等）を並行起動して「誰が・どこを・どれだけ介入するのが最適か」を統合してから動く。「軽い指示」という自己判断での省略を禁止する。例外は、純粋な事実確認1問への即答のみ（例：「LINEは無料？」）。判断・設計・委譲・実装を伴うものは必ず全員会議 |
+| 10 | 2026-06-25 | 「極限まで俺に作業させるな。固定の.md見直せよ。再度考えろ」 | **井上さんに『入力作業』を割り当てるのは厳禁**（コピペ・画面遷移・多段手順の実行を本人にやらせない）。本人の操作は **①OAuth/権限の承認 ②最終デプロイ/保存の確定ボタン ③環境変数の保存** に限る（.md許容4項目）。GAS再デプロイ手順（Code.gs全置換＋デプロイ画面操作）を本人に丸投げしたのは重大違反だった。資格情報が要る作業も、自動化が**『資格の境界（＝本人の承認/保存ボタン）の直前まで』全部やる**。さらに**『一度やれば二度と発生しない設計』を最優先**：GAS手動デプロイ依存→**無期限サービスアカウント鍵**へ移行し、デプロイ作業自体を恒久的に消す（Metaの無期限トークンと同じ上位解の発想）。「できない」と言う前に、コンテナ内の資格（CLOUDSDK_AUTH_ACCESS_TOKEN等）・MCP・PATまで棚卸しして実測する（#6） |
 
 ## 🔧 技術的な教訓（失敗から学んだこと）
 
@@ -45,6 +47,10 @@
 | 06-08 | Meta Business Managerのシステムユーザートークンは無期限 → 60日更新の仕組み自体を不要にできる |
 | 06-08 | **Square MCPコネクタがセッションに接続済み**（merchant=井上商店・ACTIVE実測確認）。Square商品登録は申請・待ち時間ゼロで直接実行できる |
 | 06-12 | **Squareに商品マスタ13点が既に存在し、ECサイト https://shincraft.square.site も公開済み**だった（大半が ecom_available=false で非表示なだけ）。新しい商品DBを作る前に既存資産を実測で棚卸しすること。商品一元管理はSquareカタログを正とする設計に確定 |
+| 06-25 | **「GAS分裂」の正体＝デプロイ分裂**：①GASプロジェクトが5個乱立（Drive実測。うち3個が「無題のプロジェクト」放置版）、②`GAS_WEBAPP_URL`が3系統に分裂（コンテナenv=死亡(Page Not Found)/GitHub Secret=旧版が応答/リポジトリCode.gs=最新だが未デプロイ）、③最新Code.gs（list/uploadFile/writeToDoc）がどのデプロイにも反映されていない。背景透過バッチの`必須項目が不足しています: fileId`は、旧版が`action:list`を解さず旧Yoom形式で応答していた動かぬ証拠。**分裂修復＝ファイル統合ではなく「最新Code.gsを1プロジェクトへ再デプロイしURLを統一」**。正プロジェクトは`1J5qyd…`（ShinCRAFT_SNS初期構築） |
+| 06-25 | **ワークフローの偽green**：daily-briefing.ymlの「報告会資料を生成」ステップに`env`が無く、daily_briefing.mjsがGAS未設定扱いでDrive転送を毎回スキップ→exit0でgreenになっていた。**「success」と「実処理が通った」は別物**。GAS依存ステップには必ず`env`を渡し、失敗時exit1で赤く表面化させる（06-04の偽成功バグと同根） |
+| 06-25 | **委譲は完了の実測とセット**：GAS再デプロイをコワークに委譲したが、受信箱Doc・全タスクDocが約2週間`[status: pending]`のまま無反応だった（Drive/Gmail実測）。委譲して終わりにせず受信箱で完了を実測し、停滞したら即・井上さん本人の最小アクションへ切替（原則#1の徹底）。clasp認証(localhost:8888コールバック)はリモートコンテナで受け取れず、対話的コード貼り戻しも跨ターンで脆い。なお`GAS_WEBAPP_URL`/`GAS_SHARED_TOKEN`はコンテナenvに実在し、デプロイ済みGASの版差はcurl実測で判定できる |
+| 06-25 | **恒久解＝GAS依存の全廃（サービスアカウント直叩き）に決定**。24時間ジョブ(GitHub Actions)はClaude CodeのMCP(Drive/Gmail=オーナー権限)に触れないため、台帳(Sheets)/画像(Drive)/Doc操作には**恒久的なGoogle資格(SA鍵 or OAuth refresh token)が1つ必須**で、発行はGoogleの仕様上アカウント所有者のみ。採用は**無期限のSA鍵**：`lib/ledger.mjs`の`callGas`をgoogleapis(SA)実装へ差し替えれば**他スクリプト無改修**でGASを全廃でき、`googleapis`は既にpackage.jsonに存在（未使用）。OAuth/claspはコンテナでコールバック受領不可のため非採用。GASプロジェクト5個乱立も将来撤去できる。**井上さんに残るのはSA鍵の発行・保存・台帳/フォルダのSA共有という"資格の境界"の最小操作のみ。コード・配線・検証は全てClaude Codeが行う** |
 
 ## 🤝 Claude製品チームの正体と分担（2026-06-12 公式ドキュメントで確定）
 
@@ -109,7 +115,7 @@
 | Gmail MCP | ✅ | メール検索・下書き作成・ラベル |
 | Google Drive MCP | ✅ | ファイル読み書き・検索 |
 | Google Calendar MCP | ✅ | 予定の読み書き |
-| GAS Webアプリ | ✅ | 台帳API・Driveアップロード（uploadFile） |
+| GAS Webアプリ | ⚠️ 要再デプロイ | 台帳API・Driveアップロード。**デプロイ済みが旧版で固定（list/uploadFile/writeToDoc未反映）→再デプロイ必須**。正プロジェクト`1J5qyd…`(ShinCRAFT_SNS初期構築)。`GAS_WEBAPP_URL`/`GAS_SHARED_TOKEN`はコンテナenvに実在 |
 | 直接ネットワーク | ❌ | graph.facebook.com / api.github.com / api.thebase.in 等は403（環境設定で許可追加は可能） |
 
 
@@ -129,11 +135,39 @@
 > 4. 優先順位はこのボードの「今の最優先」に従う。勝手に別作業を始めない。
 > 5. 井上さんに返すのは**チェックと承認だけ**。質問・相談は最小限。
 
-最終更新：2026-06-12 / 更新者：relaxed-feynman
+最終更新：2026-06-25 / 更新者：intelligent-curie
 
 ---
 
-## 🔥 今の最優先（上から順に）
+## 🔥 今の最優先（2レーン並行・直列ではない）
+
+> **2026-06-16 全員会議の結論：「全部Metaトークン待ち」は幻の直列だった。**
+> 実コードで依存を確認した結果、Metaトークンが本当に要るのは **③IG毎朝チェックの1つだけ**。
+> ②IG→LINEミラーは設計で剥がせる（台帳の承認済みイベント行起点で送ればMeta不要）。
+> EC連携フェーズ0・LINE受注ボット・Square EC公開は **最初からMeta無関係**。
+> → 下記を **Aレーン（Meta不要・今すぐ並行）** と **Bレーン（Meta必須・待ち）** に分離。Aは止める理由がない。
+
+### 🟢 Aレーン：Metaトークンを待たず今すぐ動かす（遊休ゼロ）
+
+- **A1. EC連携フェーズ0・BASE Developers利用申請**（リードタイム1〜2週間＝最長・最優先で先行）
+  - `EC_INTEGRATION_PLAN.md:86-88` が「先行着手してよい」と明記。git履歴に実行痕跡ゼロ＝**実質未着手**だった。
+  - 文面はClaude Code生成 → コワーク（Chrome版）が送信直前まで入力 → 井上さんは送信ボタン1つ。
+- **A2. Square 13商品の `ecom_available` 公開切替**（MCP接続済み・申請ゼロ・最短EC公開ルート）
+  - どの商品を公開するか井上さんの承認1回 → Claude CodeがMCPで即切替。`EC_INTEGRATION_PLAN.md:30-33`。
+- **A3. ZenPlus出店申込＋BASE「かんたん海外販売」エントリー**（審査なし5分・初期月額0円）`EC_INTEGRATION_PLAN.md:89`。
+- **A4. ②IG→LINEミラーをMeta依存から剥がす改修**：台帳の承認済みイベント行起点でもLINE配信できるようにする。
+  - LINE送信側は稼働済み。Meta読み取りは「IG実投稿との二重配信防止」の補助に格下げ。`scripts/mirror_instagram_to_line.mjs`。
+- **A5. LINE受注ボットのデプロイ完遂**（本日実装・`LINE_BOT_SETUP.md`）。GASデプロイ＋Webhook設定のみ。コワーク進行中。
+- **A6. LINE受注シートに `square_item_id`（任意）列を確保**：将来のSquare連携時の手戻り防止（第2商品台帳の裏口復活を予防）。
+
+### 🟡 Bレーン：Metaトークン必須（ここだけ待つ）
+
+- **B1. Metaトークン取得（システムユーザートークン・無期限）** → コワークに委譲中。完了後に下記が動く。
+- **B2. ③Instagram毎朝チェック**：読み取り専用・唯一の本質的Meta依存。B1完了で稼働＋refresh系ワークフロー撤去。
+
+---
+
+### 旧・最優先（履歴として保持）
 
 1. **Metaトークン：方針C（システムユーザートークン・無期限）に変更 — 全エージェント検討の結論（06-08）**
    - Meta Business Manager の**システムユーザートークンは時間失効しない**（Meta公式仕様）。
@@ -182,6 +216,8 @@
 | セッション名 | 担当作業 | 状態 | 最終更新 |
 |---|---|---|---|
 | relaxed-feynman | 社内部署→コワーク/チャット自動委譲機構の実装＋タスクDoc投入（Metaトークン・GAS再デプロイ・BASE/ZenPlus） | コワークの次回起動待ち | 06-12 |
+| relaxed-feynman | LINE受注ボット実装＋全員会議で最優先2レーン再編成＋BASE申請文面作成 | A1申請文面=完成（コワーク投入待ち）/A2は井上さん承認待ち | 06-16 |
+| intelligent-curie | **GAS分裂修復（最重要）**：全員会議で根本確定＝最新Code.gs未デプロイ＋URL3系統分裂＋GASプロジェクト5個乱立。コワークは約2週間無反応（受信箱実測）。clasp固執は廃止（コンテナでOAuth受領不可）。コンテナ側修正は完了（daily-briefing.ymlにGAS env追加で偽green解消）。**残：井上さんの最小アクション1回**＝正プロジェクト`1J5qyd…`(ShinCRAFT_SNS初期構築)を開く→Code.gsを最新rawで全置換→保存→「デプロイを管理」で既存ウェブアプリを新バージョンでデプロイ。完了後セッションが両ワークフローをdispatchして緑検証 | 🔴 井上さんの再デプロイ待ち（手順準備済） | 06-25 |
 | （各セッションはここに自分を追記する） | | | |
 
 ---
@@ -190,6 +226,12 @@
 
 | 日付 | 内容 | セッション |
 |---|---|---|
+| 06-25 | GAS分裂を全員会議で根本診断（CI実測・受信箱実測・GASプロジェクト棚卸し・GAS直接curlプローブ）：背景透過バッチ失敗＝旧版が`action:list`を解さず`fileId`要求、daily-briefingは`env`欠落で偽green、と単一原因「最新Code.gs未デプロイ＋URL分裂」に収束。コワーク未着手も実測確認 | intelligent-curie |
+| 06-25 | 偽green修正：daily-briefing.ymlの報告会生成ステップにGAS env（URL/TOKEN）を追加しDrive転送が実際に走るように。daily_briefing.mjsの誤コメント是正。chrome_gas_deploy_promptを最新Code.gs（raw URL・writeToDoc含む）に更新 | intelligent-curie |
+| 06-16 | 全員会議（現状監査班＋代替設計班）：「全部Metaトークン待ち」が幻の直列と判明。最優先をA/B 2レーンに再編成。BASE申請文面（chrome_base_apply_prompt.md）作成 | relaxed-feynman |
+| 06-24 | 毎朝6時ブリーフィングのDrive転送追加（daily_briefing.mjs + Code.gs writeToDoc）・.clasp.json作成・コミット済み。GAS再デプロイのみ残。コワーク受信箱にタスクDoc投入済み | relaxed-feynman |
+| 06-24 | 運用ボード更新（本日作業を進行中タスクに反映） | relaxed-feynman |
+| 06-16 | LINE受注ボット実装（line_juchu_bot.gs・LINE_BOT_SETUP.md）＋全員会議の原則を恒久ルール化（LESSONS #9） | relaxed-feynman |
 | 06-12 | 社内部署→コワーク/チャット自動委譲機構を実装（drive_inbox.mjs・COWORK_STARTUP_PROMPT・CHAT_BRIEFING_PROMPT・GAS appendToDoc/readDoc） | relaxed-feynman |
 | 06-12 | Drive AIフォルダにコワーク用タスクDoc投入：Metaトークン設定（最優先）・GAS再デプロイ・BASE申請・ZenPlus出店 | relaxed-feynman |
 | 06-08 | EC連携全員会議：BASE API・ZenPlus並行調査完了 → EC_INTEGRATION_PLAN.md に実装計画を確定 | relaxed-feynman |
