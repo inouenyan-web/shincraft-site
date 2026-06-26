@@ -54,23 +54,27 @@ const briefing = [
 await writeFile(OUT_PATH, briefing, 'utf8');
 console.log(`✅ 朝6時 全AI報告会の資料を生成しました（${today}）→ AI共有ブリーフィング_最新.md`);
 
-// GAS経由でDriveのGoogle Docを上書き（コワーク・Chrome版が読む）
+// ブリーフィングの「正本」は公開GitHub URL（このmdをワークフローがコミットする）。
+// 全AIはここを読めば常に最新（資格情報・Drive不要）:
+const BRIEFING_GH_URL = 'https://github.com/inouenyan-web/shincraft-site/blob/main/AI共有ブリーフィング_最新.md';
+// DriveのGoogle Docは「補助コピー」。GAS経由の転送は best-effort で、
+// 失敗してもビルドは落とさない（旧版/未デプロイでも偽green/赤を作らない）。
 const gasUrl = process.env.GAS_WEBAPP_URL;
 const gasToken = process.env.GAS_SHARED_TOKEN;
 const BRIEFING_DOC_ID = '1nItOD505h2CHEMd_xjUtPaupAF0QNHR-u1IMhf0cGf0';
 if (gasUrl && gasToken) {
-  const res = await fetch(gasUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: gasToken, action: 'writeToDoc', docId: BRIEFING_DOC_ID, content: briefing }),
-  });
-  const data = await res.json();
-  if (data.ok) {
-    console.log('✅ DriveのAI共有ブリーフィング_最新 を更新しました。');
-  } else {
-    console.error('⚠️ Drive更新失敗:', data.error);
-    process.exit(1);
+  try {
+    const res = await fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: gasToken, action: 'writeToDoc', docId: BRIEFING_DOC_ID, content: briefing }),
+    });
+    const data = await res.json().catch(() => ({ ok: false, error: 'non-JSON応答（GAS旧版/デプロイ不正の可能性）' }));
+    if (data.ok) console.log('✅ DriveのAI共有ブリーフィング_最新 を更新しました（補助コピー）。');
+    else console.warn('⚠️ Drive補助コピー更新スキップ:', data.error, '/ 正本はGitHub:', BRIEFING_GH_URL);
+  } catch (e) {
+    console.warn('⚠️ Drive補助コピー更新スキップ（GAS到達不可）:', String(e.message || e), '/ 正本はGitHub:', BRIEFING_GH_URL);
   }
 } else {
-  console.log('⚠️ GAS_WEBAPP_URL/GAS_SHARED_TOKEN 未設定 — Drive転送をスキップ');
+  console.log('ℹ️ GAS未設定 — Drive補助コピーはスキップ。正本はGitHub:', BRIEFING_GH_URL);
 }
