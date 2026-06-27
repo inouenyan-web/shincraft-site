@@ -207,7 +207,7 @@
 ---
 
 <!-- IG_DM_REMINDER:START -->
-### 📩 2026-06-28 02:17 Instagram DM 手動チェック（自動リマインド）
+### 📩 2026-06-28 02:23 Instagram DM 手動チェック（自動リマインド）
 
 > InstagramのDMはAPI(Graph API)では取得できないため自動チェック対象外です。
 > instagram_manage_messages 権限(Meta App Review)の承認後に自動取得へ切替予定。
@@ -227,7 +227,7 @@
 <!-- IG_DM_REMINDER:END -->
 
 <!-- GMAIL_INBOX:START -->
-### 📧 2026-06-28 02:17 Gmail 新着チェック（自動 / shincraft2023）
+### 📧 2026-06-28 02:23 Gmail 新着チェック（自動 / shincraft2023）
 
 直近24h未読 8件 / うち受注関連の可能性 4件
 
@@ -237,6 +237,15 @@
 - [ ] "ラクスル" <mag@raksul.com> ｜ ラクスル会員様限定◆のぼり印刷やその他複数商品が今なら50%OFF！
 - [ ] Anthropic <no-reply-FwQdr5wjL52eA7M8YuBw… ｜ サブスクリプションへのアクセスが一時停止されました
 <!-- GMAIL_INBOX:END -->
+
+<!-- CHATWORK_INBOX:START -->
+### 💬 2026-06-28 02:23 Chatwork 新着チェック（既読ルームのみ自動）
+
+既読ルーム 0件を走査 / 受注関連の可能性 0件
+
+既読分に受注関連の新着なし。
+
+<!-- CHATWORK_INBOX:END -->
 
 ## 🏃 進行中タスク（セッションごと）
 
