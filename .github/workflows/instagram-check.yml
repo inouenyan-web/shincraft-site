@@ -1,9 +1,13 @@
-name: Instagramチェック（毎朝）
+name: Instagramチェック（1日4回）
 
 on:
   schedule:
-    - cron: '0 0 * * *'   # 毎日UTC 0:00 = 日本時間 朝9:00
-  workflow_dispatch:        # GitHubのActionsタブから手動実行も可能
+    # 日本時間 0/6/12/18時の1日4回（GitHubのcronはUTC。JST = UTC+9）
+    - cron: '0 15 * * *' # JST 0:00
+    - cron: '0 21 * * *' # JST 6:00
+    - cron: '0 3 * * *'  # JST 12:00
+    - cron: '0 9 * * *'  # JST 18:00
+  workflow_dispatch: # GitHubのActionsタブから手動実行も可能
 
 jobs:
   check:
