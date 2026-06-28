@@ -1,0 +1,45 @@
+name: Daily AI Knowledge Reconciliation
+
+on:
+  schedule:
+    # 01:00 JST = 16:00 UTC (previous day)
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Claude reviews shared knowledge
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            This is the 01:00 JST daily knowledge reconciliation.
+            Read CLAUDE.md, LESSONS.md, AI共有ブリーフィング_最新.md, 運用ボード.md, AI_HUB/HANDOFF.md, AI_HUB/ACTIVITY_LEDGER.md, AI_HUB/CONTEXT_ROUTING.md, and all work logs created or changed in the past 24 hours.
+            Reconcile the current state: find contradictions, unresolved blockers, stale ownership, missing evidence, and reusable lessons.
+            Update only public-safe knowledge files in this repository. Do not write secrets, personal information, customer details, private URLs, or raw conversation text.
+            Add a dated work log and ledger row for this review. Update HANDOFF.md with the single highest-priority next action.
+            Do not merge, deploy, publish, spend money, or contact anyone.
+
+      - name: Commit knowledge updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AI_HUB LESSONS.md 運用ボード.md
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git commit -m "chore: daily AI knowledge reconciliation [skip ci]"
+            git push
+          else
+            echo "No knowledge changes"
+          fi
