@@ -207,7 +207,7 @@
 ---
 
 <!-- IG_DM_REMINDER:START -->
-### 📩 2026-06-29 01:17 Instagram DM 手動チェック（自動リマインド）
+### 📩 2026-06-29 07:04 Instagram DM 手動チェック（自動リマインド）
 
 > InstagramのDMはAPI(Graph API)では取得できないため自動チェック対象外です。
 > instagram_manage_messages 権限(Meta App Review)の承認後に自動取得へ切替予定。
@@ -227,7 +227,7 @@
 <!-- IG_DM_REMINDER:END -->
 
 <!-- GMAIL_INBOX:START -->
-### 📧 2026-06-29 01:17 Gmail 新着チェック（自動 / shincraft2023）
+### 📧 2026-06-29 07:04 Gmail 新着チェック（自動 / shincraft2023）
 
 直近24h未読 1件 / うち受注関連の可能性 1件
 
@@ -236,7 +236,7 @@
 <!-- GMAIL_INBOX:END -->
 
 <!-- CHATWORK_INBOX:START -->
-### 💬 2026-06-29 01:17 Chatwork 新着チェック（既読ルームのみ自動）
+### 💬 2026-06-29 07:04 Chatwork 新着チェック（既読ルームのみ自動）
 
 既読ルーム 0件を走査 / 受注関連の可能性 0件
 
