@@ -69,6 +69,14 @@ jobs:
           set -o pipefail
           node scripts/instagram_dm_reminder.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: /inbox 受注チェックレポート生成＋Chatwork通知
+        working-directory: ai-sns-automation
+        env:
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+        run: |
+          set -o pipefail
+          node scripts/inbox_report.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: 報告会資料を生成
         working-directory: ai-sns-automation
         run: |
